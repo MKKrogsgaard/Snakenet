@@ -78,15 +78,18 @@ class Game():
 
         game_over_rect.midtop = (WINDOW_SIZE_X/2, WINDOW_SIZE_Y/4)
 
+        # Clear screen
+        self.screen.fill(BACKGROUND_COLOR)
+        pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
+
         self.screen.blit(game_over_surface, game_over_rect)
         pg.display.update()
 
         print('[+] Game over!')
 
         time.sleep(2)
-        pg.quit()
-
-        quit(0) # TODO: return some stats instead of just quitting
+        self.final_score = score
+        self.game_is_running = False # Exit the main loop cleanly
 
     def render(self):
         # Drawing stuff
@@ -176,10 +179,16 @@ class Game():
 
             self.logic_time_interval = 1 / SNAKE_MOVES_PER_SECOND # How long should a logical tick be for the current frame
 
+            # Process input every frame, but update movement and render for every logical tick
             self.processInput()
             while self.accumulated_time >= self.logic_time_interval:
                 self.update()
                 self.render()
 
+        pg.quit()
+        return self.final_score
+
 game = Game()
-game.startGame()
+final_score = game.startGame()
+
+print(f'Final score: {final_score}')
