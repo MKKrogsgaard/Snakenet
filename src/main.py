@@ -34,7 +34,7 @@ GAME_OVER_FONT_SIZE = 25
 
 # Instantiate the snake on the left side of the screen
 X_POS_INITIAL = 0
-Y_POS_INITIAL = random.randint(0, 29)*GRID_SIZE
+Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*GRID_SIZE
 
 class Game():
     def __init__(self):
@@ -93,17 +93,9 @@ class Game():
         self.game_is_running = False # Exit the main loop cleanly
 
     def render(self):
-        # Drawing stuff
         # Clear screen
         self.screen.fill(BACKGROUND_COLOR)
         pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
-
-        self.showScore(
-                score=self.snake.score,
-                color=SCORE_TEXT_COLOR,
-                font=SCORE_FONT,
-                font_size=SCORE_FONT_SIZE
-            )
 
         # Draw apple
         pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(self.apple.position[0], self.apple.position[1], GRID_SIZE, GRID_SIZE))
@@ -112,6 +104,13 @@ class Game():
         pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(self.snake.position[0], self.snake.position[1], GRID_SIZE, GRID_SIZE))
         for pos in self.snake.tail:
             pg.draw.rect(surface=self.screen, color=SNAKE_BODY_COLOR, rect=(pos[0], pos[1], GRID_SIZE, GRID_SIZE))
+
+        self.showScore(
+                score=self.snake.score,
+                color=SCORE_TEXT_COLOR,
+                font=SCORE_FONT,
+                font_size=SCORE_FONT_SIZE
+            )
 
         pg.display.update()
 
@@ -168,6 +167,7 @@ class Game():
             print('[+] Game initialized successfully!')
 
         self.screen = pg.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+        pg.display.set_caption('Snake')
         self.clock = pg.time.Clock()
 
         self.game_is_running = True
