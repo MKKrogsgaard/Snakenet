@@ -36,6 +36,27 @@ GAME_OVER_FONT_SIZE = 25
 X_POS_INITIAL = 0
 Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*SQUARE_SIZE
 
+class Grid():
+    '''
+    Keeps track of the positions of objects in the game grid via the attribute 'position'.
+    
+    position[i][j] is the object that currently occupies the square at grid coordinate (i, j).
+    
+    Legend:
+        0: unoccupied
+        1: Apple
+        2: Snake body
+        3: Snake head
+
+    '''
+    def __init__(self, squares_per_side, square_size):
+        self.squares_per_side = square_size
+        self.square_size = square_size
+        
+        self.positions = [[0, 0] for i in range(squares_per_side)]
+
+    
+
 class Game():
     '''Main class that handles all game logic.'''
     def __init__(self):
