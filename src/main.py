@@ -6,10 +6,10 @@ from snake import Snake
 from apple import Apple
 
 # Resolution
-WINDOW_SIZE_X = 600
-WINDOW_SIZE_Y = WINDOW_SIZE_X
+WINDOW_SIZE = 500
 
-GRID_SIZE = 20
+SQUARES_PER_SIDE = 20 # Grid dimensions will be SQUARES_PER_SIDE^2
+GRID_SIZE = WINDOW_SIZE / SQUARES_PER_SIDE
 
 # FPS and game speed
 GAME_FPS = 60
@@ -24,7 +24,7 @@ SNAKE_BODY_COLOR = pg.Color(31, 158, 9)
 SNAKE_HEAD_COLOR = pg.Color(57, 252, 22)
 APPLE_COLOR = pg.Color(252, 22, 38)
 
-border_rect = pg.Rect(0, 0, WINDOW_SIZE_X, WINDOW_SIZE_Y)
+border_rect = pg.Rect(0, 0, WINDOW_SIZE, WINDOW_SIZE)
 
 # Fonts
 SCORE_FONT = 'times new roman'
@@ -45,15 +45,16 @@ class Game():
             y_pos_initial=Y_POS_INITIAL,
             grid_size=GRID_SIZE, 
             min_x=0, 
-            max_x=WINDOW_SIZE_X - GRID_SIZE, 
+            max_x=WINDOW_SIZE - GRID_SIZE, 
             min_y=0, 
-            max_y=WINDOW_SIZE_Y - GRID_SIZE)
+            max_y=WINDOW_SIZE - GRID_SIZE)
 
         # Instantiate the apple
         self.apple = Apple(
             color=APPLE_COLOR, 
             x_pos_initial=0, 
-            y_pos_initial=0, 
+            y_pos_initial=0,
+            squares_per_side=SQUARES_PER_SIDE,
             grid_size=GRID_SIZE
         )
         self.apple.respawn()
@@ -76,7 +77,7 @@ class Game():
 
         game_over_rect = game_over_surface.get_rect()
 
-        game_over_rect.midtop = (WINDOW_SIZE_X/2, WINDOW_SIZE_Y/4)
+        game_over_rect.midtop = (WINDOW_SIZE/2, WINDOW_SIZE/4)
 
         # Clear screen
         self.screen.fill(BACKGROUND_COLOR)
@@ -166,7 +167,7 @@ class Game():
         else:
             print('[+] Game initialized successfully!')
 
-        self.screen = pg.display.set_mode((WINDOW_SIZE_X, WINDOW_SIZE_Y))
+        self.screen = pg.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
         self.clock = pg.time.Clock()
 
         self.game_is_running = True

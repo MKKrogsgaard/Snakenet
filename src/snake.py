@@ -35,7 +35,6 @@ class Snake():
 
     def isOutOfBounds(self):
         if not(self.xbounds[0] <= self.position[0] <= self.xbounds[1] and self.ybounds[0] <= self.position[1] <= self.ybounds[1]):
-            print('[!] Out of bounds!')
             return True
         else:
             return False
@@ -43,7 +42,6 @@ class Snake():
     def isBitingTail(self):
         for pos in self.tail:
             if self.position[0] == pos[0] and self.position[1] == pos[1]:
-                print('[!] Ate your own tail!')
                 return True
         return False
         
