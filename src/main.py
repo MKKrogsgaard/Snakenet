@@ -9,7 +9,7 @@ from apple import Apple
 WINDOW_SIZE = 500
 
 SQUARES_PER_SIDE = 20 # Grid dimensions will be SQUARES_PER_SIDE^2
-GRID_SIZE = WINDOW_SIZE / SQUARES_PER_SIDE
+SQUARE_SIZE = WINDOW_SIZE / SQUARES_PER_SIDE
 
 # FPS and game speed
 GAME_FPS = 60
@@ -34,20 +34,21 @@ GAME_OVER_FONT_SIZE = 25
 
 # Instantiate the snake on the left side of the screen
 X_POS_INITIAL = 0
-Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*GRID_SIZE
+Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*SQUARE_SIZE
 
 class Game():
+    '''Main class that handles all game logic.'''
     def __init__(self):
         self.snake = Snake(
             body_color=SNAKE_BODY_COLOR,
             head_color=SNAKE_HEAD_COLOR, 
             x_pos_initial=X_POS_INITIAL, 
             y_pos_initial=Y_POS_INITIAL,
-            grid_size=GRID_SIZE, 
+            square_size=SQUARE_SIZE, 
             min_x=0, 
-            max_x=WINDOW_SIZE - GRID_SIZE, 
+            max_x=WINDOW_SIZE - SQUARE_SIZE, 
             min_y=0, 
-            max_y=WINDOW_SIZE - GRID_SIZE)
+            max_y=WINDOW_SIZE - SQUARE_SIZE)
 
         # Instantiate the apple
         self.apple = Apple(
@@ -55,7 +56,7 @@ class Game():
             x_pos_initial=0, 
             y_pos_initial=0,
             squares_per_side=SQUARES_PER_SIDE,
-            grid_size=GRID_SIZE
+            square_size=SQUARE_SIZE
         )
         self.apple.respawn()
 
@@ -98,12 +99,12 @@ class Game():
         pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
 
         # Draw apple
-        pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(self.apple.position[0], self.apple.position[1], GRID_SIZE, GRID_SIZE))
+        pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(self.apple.position[0], self.apple.position[1], SQUARE_SIZE, SQUARE_SIZE))
 
         # Draw snake
-        pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(self.snake.position[0], self.snake.position[1], GRID_SIZE, GRID_SIZE))
+        pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(self.snake.position[0], self.snake.position[1], SQUARE_SIZE, SQUARE_SIZE))
         for pos in self.snake.tail:
-            pg.draw.rect(surface=self.screen, color=SNAKE_BODY_COLOR, rect=(pos[0], pos[1], GRID_SIZE, GRID_SIZE))
+            pg.draw.rect(surface=self.screen, color=SNAKE_BODY_COLOR, rect=(pos[0], pos[1], SQUARE_SIZE, SQUARE_SIZE))
 
         self.showScore(
                 score=self.snake.score,

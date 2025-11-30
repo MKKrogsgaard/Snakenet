@@ -1,6 +1,6 @@
 class Snake():
     # Constructor
-    def __init__(self, body_color, head_color, x_pos_initial, y_pos_initial, grid_size, min_x, max_x, min_y, max_y):
+    def __init__(self, body_color, head_color, x_pos_initial, y_pos_initial, square_size, min_x, max_x, min_y, max_y):
         self.body_color = body_color
         self.head_color = head_color
 
@@ -10,7 +10,7 @@ class Snake():
         self.ybounds = (min_y, max_y)
     
         self.score = 0
-        self.grid_size = grid_size
+        self.square_size = square_size
         self.direction = 'RIGHT'
         
     
@@ -21,13 +21,13 @@ class Snake():
             self.tail.pop(0)
 
         if self.direction == 'UP':
-            self.position[1] -= self.grid_size
+            self.position[1] -= self.square_size
         elif self.direction == 'DOWN':
-            self.position[1] += self.grid_size
+            self.position[1] += self.square_size
         elif self.direction == 'LEFT':
-            self.position[0] -= self.grid_size
+            self.position[0] -= self.square_size
         elif self.direction == 'RIGHT':
-            self.position[0] += self.grid_size
+            self.position[0] += self.square_size
 
     def grow(self):
         '''Grows the snake by appending the current position of the head to its tail.'''
