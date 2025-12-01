@@ -44,4 +44,14 @@ class Snake():
             if self.position[0] == pos[0] and self.position[1] == pos[1]:
                 return True
         return False
+    
+    def getHeadGridPosition(self):
+        '''Returns the position of the head in grid coordinates.'''
+        return [int(self.position[0] / self.square_size), int(self.position[1] / self.square_size)]
         
+    def getTailGridPositions(self):
+        '''Returns the positions of the tail elements in grid coordinates.'''
+        res = []
+        for pos in self.tail:
+            res.append([int(pos[0] / self.square_size), int(pos[1] / self.square_size)])
+        return res

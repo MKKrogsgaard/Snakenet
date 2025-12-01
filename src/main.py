@@ -43,19 +43,39 @@ class Grid():
     position[i][j] is the object that currently occupies the square at grid coordinate (i, j).
     
     Legend:
-        0: unoccupied
+        0: Unoccupied
         1: Apple
         2: Snake body
         3: Snake head
-
     '''
     def __init__(self, squares_per_side, square_size):
-        self.squares_per_side = square_size
+        self.squares_per_side = squares_per_side
         self.square_size = square_size
         
-        self.positions = [[0, 0] for i in range(squares_per_side)]
+        self.positions = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
-    
+    def update(self, snake=Snake, apple=Apple):
+        self.positions = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+
+        apple_x, apple_y = apple.getGridPosition()
+        self.positions[apple_x][apple_y] = 1
+
+        head_x, head_y = snake.getHeadGridPosition()
+        self.positions[head_x][head_y] = 3
+        
+        tailpositions = snake.getTailGridPositions()
+        for pos in tailpositions:
+            pos_x, pos_y = pos
+            self.positions[pos_x][pos_y] = 2
+
+    def printGrid(self):
+        temp_str = ""
+        # The arrangement is self.positions[x][y] with x = column, y = row
+        for j in range(self.squares_per_side):
+            for i in range(self.squares_per_side):
+                temp_str += str(self.positions[i][j])
+            temp_str += "\n"
+        print(temp_str)
 
 class Game():
     '''Main class that handles all game logic.'''
@@ -206,12 +226,19 @@ class Game():
             self.processInput()
             while self.accumulated_time >= self.logic_time_interval:
                 self.update()
+                grid.update(self.snake, self.apple)
                 self.render()
+                grid.printGrid()
 
         pg.quit()
-        return self.final_score
+        return self.snake.score
 
 game = Game()
+grid = Grid(
+    square_size=SQUARE_SIZE,
+    squares_per_side=SQUARES_PER_SIDE
+)
+
 final_score = game.startGame()
 
 print(f'Final score: {final_score}')

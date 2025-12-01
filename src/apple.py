@@ -11,3 +11,7 @@ class Apple():
     def respawn(self):
         '''Respawns the Apple at a random location in the grid.'''
         self.position = [random.randint(0, self.squares_per_side - 1)*self.square_size, random.randint(0, self.squares_per_side - 1)*self.square_size]
+
+    def getGridPosition(self):
+        '''Returns the position of the apple in grid coordinates'''
+        return [int(self.position[0] / self.square_size), int(self.position[1] / self.square_size)]
