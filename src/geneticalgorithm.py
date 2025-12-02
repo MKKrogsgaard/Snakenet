@@ -46,6 +46,12 @@ class Agent():
         '''Makes the agent play a game of snake and returns the score.'''
         game = Game(agent=self)
 
+# Each layer should be [n_input, n_output, activation], with n_input = None to use the output size from the previous layer
+LAYERS = [[20*20, 20, sigmoid], [None, 10, sigmoid], [None, 4, sigmoid]]
 
+agent = Agent(layers=LAYERS)
+
+# Debugging, prints network structure
+print([np.array(agent.neural_network.weights[i]).shape for i in range(len(LAYERS))])
 
         

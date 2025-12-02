@@ -1,6 +1,13 @@
+# Type hinting for classes that aren't actually imported, courtesey of StackOverflow 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from geneticalgorithm import Agent
+
 import random
 import pygame as pg
 import time
+import numpy as np
 
 from snake import Snake
 from apple import Apple
@@ -44,9 +51,9 @@ class Grid():
     
     Legend:
         0: Unoccupied
-        1: Apple
-        2: Snake body
-        3: Snake head
+        0.25: Apple
+        0.75: Snake body
+        1: Snake head
     '''
     def __init__(self, squares_per_side, square_size):
         self.squares_per_side = squares_per_side
@@ -58,15 +65,15 @@ class Grid():
         self.positions = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
         apple_x, apple_y = apple.getGridPosition()
-        self.positions[apple_x][apple_y] = 1
+        self.positions[apple_x][apple_y] = 0.25
 
         head_x, head_y = snake.getHeadGridPosition()
-        self.positions[head_x][head_y] = 3
+        self.positions[head_x][head_y] = 1
         
         tailpositions = snake.getTailGridPositions()
         for pos in tailpositions:
             pos_x, pos_y = pos
-            self.positions[pos_x][pos_y] = 2
+            self.positions[pos_x][pos_y] = 0.75
 
     def printGrid(self):
         temp_str = ""
@@ -79,7 +86,9 @@ class Grid():
 
 class Game():
     '''Main class that handles all game logic.'''
-    def __init__(self):
+    def __init__(self, agent: Agent):
+        self.agent = agent
+
         self.snake = Snake(
             body_color=SNAKE_BODY_COLOR,
             head_color=SNAKE_HEAD_COLOR, 
@@ -91,7 +100,6 @@ class Game():
             min_y=0, 
             max_y=WINDOW_SIZE - SQUARE_SIZE)
 
-        # Instantiate the apple
         self.apple = Apple(
             color=APPLE_COLOR, 
             x_pos_initial=0, 
@@ -100,6 +108,11 @@ class Game():
             square_size=SQUARE_SIZE
         )
         self.apple.respawn()
+
+        self.grid = Grid(
+            square_size=SQUARE_SIZE,
+            squares_per_side=SQUARES_PER_SIDE
+        )
 
 
     def showScore(self, score, color, font, font_size):
@@ -112,25 +125,27 @@ class Game():
         # Displays the text
         self.screen.blit(score_surface, score_rect)
 
-    def gameOver(self, score, color, font, font_size):
-        game_over_font = pg.font.SysFont(font, font_size)
+    def gameOver(self, score, color, font, font_size, message):
+        if self.agent == None:
+            # This is only for human players
+            game_over_font = pg.font.SysFont(font, font_size)
 
-        game_over_surface = game_over_font.render('Game over. Final score: ' + str(score), True, color)
+            game_over_surface = game_over_font.render(message + str(score), True, color)
 
-        game_over_rect = game_over_surface.get_rect()
+            game_over_rect = game_over_surface.get_rect()
 
-        game_over_rect.midtop = (WINDOW_SIZE/2, WINDOW_SIZE/4)
+            game_over_rect.midtop = (WINDOW_SIZE/2, WINDOW_SIZE/4)
 
-        # Clear screen
-        self.screen.fill(BACKGROUND_COLOR)
-        pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
+            # Clear screen
+            self.screen.fill(BACKGROUND_COLOR)
+            pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
 
-        self.screen.blit(game_over_surface, game_over_rect)
-        pg.display.update()
+            self.screen.blit(game_over_surface, game_over_rect)
+            pg.display.update()
 
-        print('[+] Game over!')
+            print('[+] Game over!')
 
-        time.sleep(2)
+            time.sleep(3)
         self.final_score = score
         self.game_is_running = False # Exit the main loop cleanly
 
@@ -157,19 +172,39 @@ class Game():
         pg.display.update()
 
     def processInput(self):
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                self.game_is_running = False
+        if self.agent == None:
+            # Human player
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    self.game_is_running = False
 
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_UP:
-                    self.temp_direction = 'UP'
-                elif event.key == pg.K_DOWN:
-                    self.temp_direction = 'DOWN'
-                elif event.key == pg.K_LEFT:
-                    self.temp_direction = 'LEFT'
-                elif event.key == pg.K_RIGHT:
-                    self.temp_direction = 'RIGHT'
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_UP:
+                        self.temp_direction = 'UP'
+                    elif event.key == pg.K_DOWN:
+                        self.temp_direction = 'DOWN'
+                    elif event.key == pg.K_LEFT:
+                        self.temp_direction = 'LEFT'
+                    elif event.key == pg.K_RIGHT:
+                        self.temp_direction = 'RIGHT'
+        else:
+            agent_input = np.array(self.grid.positions)
+            agent_input = agent_input.flatten()
+
+            agent_output = self.agent.neural_network.forward(agent_input)
+            max_index = np.argmax(agent_output)
+
+            # Press the key corresponding to the output neuron with the greatest activation
+            if max_index == 0:
+                self.temp_direction = 'UP'
+            elif max_index == 1:
+                self.temp_direction = 'DOWN'
+            elif max_index == 2:
+                self.temp_direction = 'LEFT'
+            elif max_index == 3:
+                self.temp_direction = 'RIGHT'
+
+        
 
     def update(self):
         # Check if the player wants to move in the opposite direction of the last movement made by the snake
@@ -185,12 +220,22 @@ class Game():
 
         self.snake.move()
 
-        if self.snake.isOutOfBounds() or self.snake.isBitingTail():
+        if self.snake.isOutOfBounds():
             self.gameOver(
                 score=self.snake.score,
                 color=GAME_OVER_TEXT_COLOR,
                 font=GAME_OVER_FONT,
-                font_size=GAME_OVER_FONT_SIZE
+                font_size=GAME_OVER_FONT_SIZE,
+                message='Game over, you hit a wall! Final score: '
+            )
+
+        if self.snake.isBitingTail():
+            self.gameOver(
+                score=self.snake.score,
+                color=GAME_OVER_TEXT_COLOR,
+                font=GAME_OVER_FONT,
+                font_size=GAME_OVER_FONT_SIZE,
+                message='Game over, you ate your own tail! Final score: '
             )
 
         if self.snake.position == self.apple.position:
@@ -226,19 +271,14 @@ class Game():
             self.processInput()
             while self.accumulated_time >= self.logic_time_interval:
                 self.update()
-                grid.update(self.snake, self.apple)
+                self.grid.update(self.snake, self.apple)
                 self.render()
-                grid.printGrid()
 
         pg.quit()
         return self.snake.score
 
-game = Game()
-grid = Grid(
-    square_size=SQUARE_SIZE,
-    squares_per_side=SQUARES_PER_SIDE
-)
+# game = Game(agent=None)
 
-final_score = game.startGame()
+# final_score = game.startGame()
 
-print(f'Final score: {final_score}')
+# print(f'Final score: {final_score}')
