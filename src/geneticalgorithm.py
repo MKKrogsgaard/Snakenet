@@ -1,3 +1,5 @@
+from typing import List, Dict, Union
+
 import numpy as np
 
 from game import Game
@@ -46,12 +48,30 @@ class Agent():
         '''Makes the agent play a game of snake and returns the score.'''
         game = Game(agent=self)
 
-# Each layer should be [n_input, n_output, activation], with n_input = None to use the output size from the previous layer
-LAYERS = [[20*20, 20, sigmoid], [None, 10, sigmoid], [None, 4, sigmoid]]
+class GeneticAlgorithm():
+    def generateAgents(self, population_size, layers):
+        self.Agents = [Agent(layers=layers) for i in range(population_size)]
 
-agent = Agent(layers=LAYERS)
-
-# Debugging, prints network structure
-print([np.array(agent.neural_network.weights[i]).shape for i in range(len(LAYERS))])
-
+    def getAgentFitnessScores(self, agents: List[Agent]):
+        results = []
+        for agent in agents:
+            results.append(agent.getFitness())
+        return results
+    
+    def selectAgents(self, agents: List[Agent], p: int):
+        '''
+        Selects the agents with the highest fitness score from the list of agents.
         
+        :p: The percentile of agents to select. For example, p=0.1 means we select only the top 10 % of agents.
+        '''
+
+        if p > 1:
+            print(f'[!] GeneticAlgorithm.selectAgents(): p cannot be greater than 1. Setting p=1.')
+            p = 1
+        
+        fitness_scores = self.getAgentFitnessScores(agents=agents)
+        agents = sorted(agents, key=lambda agent: fitness_scores.index(agent))
+        agents = agents[:int(p)*len(agents)]
+        
+    
+            

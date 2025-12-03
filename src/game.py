@@ -37,7 +37,7 @@ border_rect = pg.Rect(0, 0, WINDOW_SIZE, WINDOW_SIZE)
 SCORE_FONT = 'times new roman'
 SCORE_FONT_SIZE = 20
 GAME_OVER_FONT = 'times new roman'
-GAME_OVER_FONT_SIZE = 25
+GAME_OVER_FONT_SIZE = 22
 
 # Instantiate the snake on the left side of the screen
 X_POS_INITIAL = 0
@@ -277,8 +277,7 @@ class Game():
         pg.quit()
         return self.snake.score
 
-# game = Game(agent=None)
+game = Game(agent=None)
 
-# final_score = game.startGame()
+#final_score = game.startGame()
 
-# print(f'Final score: {final_score}')
