@@ -233,23 +233,23 @@ class GeneticAlgorithm():
 
             highest_score = max([agent.fitness for agent in self.agents])
             self.generation_stats.append([i + 1, highest_score])
-            print(f'Highest score of generation {i + 1}: {highest_score}')
 
             print('Performing crossover...')
             self.agents = self.crossover(agents=selected_agents, layers=self.layers, population_size=self.population_size)
             print('Performing mutation...')
             self.agents = self.mutate(agents=self.agents, p=p_mutation)
+            print(f'[+] Highest score of generation {i + 1}: {highest_score}')
 
             
 LAYERS = [
-    [20*20, 100, sigmoid],
-    [None, 100, sigmoid],
-    [None, 100, sigmoid],
-    [None, 50, sigmoid],
-    [None, 4, sigmoid]
+    [20*20, 100, ReLU],
+    [None, 100, ReLU],
+    [None, 50, ReLU],
+    [None, 25, ReLU],
+    [None, 4, ReLU]
 ]
 
-POPULATION_SIZE = 100
+POPULATION_SIZE = 2000
 
 NUM_GENERATIONS = 10
 
@@ -261,7 +261,7 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.01)
+ga.execute(p_selection=0.1, p_mutation = 0.1)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
