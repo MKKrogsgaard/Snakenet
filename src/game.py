@@ -97,6 +97,8 @@ class Game():
         self.snake_moves_per_second = snake_moves_per_second
         self.agent = agent
 
+        self.grid_records = []
+
         self.snake = Snake(
             body_color=SNAKE_BODY_COLOR,
             head_color=SNAKE_HEAD_COLOR, 
@@ -157,14 +159,14 @@ class Game():
         self.final_score = score
         self.game_is_running = False # Exit the main loop cleanly
 
-    def render(self, grid: Grid):
+    def render(self, grid_positions, score: int):
         # Clear screen
         self.screen.fill(BACKGROUND_COLOR)
         pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
 
-        for i in range(len(grid.positions)):
-            for j in range(len(grid.positions)):
-                current_position = grid.positions[i][j]
+        for i in range(len(grid_positions)):
+            for j in range(len(grid_positions)):
+                current_position = grid_positions[i][j]
                 if current_position == APPLE_VAL:
                     pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
                 elif current_position == BODY_VAL:
@@ -173,13 +175,33 @@ class Game():
                     pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
         self.showScore(
-                score=self.snake.score,
+                score=score,
                 color=SCORE_TEXT_COLOR,
                 font=SCORE_FONT,
                 font_size=SCORE_FONT_SIZE
             )
 
         pg.display.update()
+
+    def replay(self, snake_moves_per_second, title='Snake replay'):
+        # Pygame setup, returns a tuple with the number of successfull and failed inits
+        n_successful, n_errors  = pg.init()
+        if n_errors > 0:
+            print(f'[!] Encountered {n_errors} error(s) when initializing the replay, aborting...')
+        else:
+            print('[+] Replay initialized successfully!')
+
+        fps = snake_moves_per_second # FPS should match how fast the snake moved
+
+        self.screen = pg.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+        pg.display.set_caption(title)
+
+        self.clock = pg.time.Clock()
+        for grid_state in self.grid_records:
+            self.render(grid_state[0], grid_state[1])
+            self.clock.tick(fps)
+        time.sleep(3)
+        
 
     def processInput(self):
         if self.agent == None:
@@ -264,7 +286,7 @@ class Game():
             # Pygame setup, returns a tuple with the number of successfull and failed inits
             n_successful, n_errors  = pg.init()
             if n_errors > 0:
-                print(f'[!] Encountered {n_errors} error(s) when running pygame.init(), aborting...')
+                print(f'[!] Encountered {n_errors} error(s) when initializing the game, aborting...')
             else:
                 print('[+] Game initialized successfully!')
 
@@ -293,6 +315,7 @@ class Game():
                 self.grid.update(self.snake, self.apple)
                 self.processInput()
                 self.update()
+                self.grid_records.append([self.grid.positions, self.snake.score])
                 if not self.game_is_running:
                     break
             
@@ -312,7 +335,8 @@ class Game():
                 while self.accumulated_time >= self.logic_time_interval:
                     self.grid.update(self.snake, self.apple)
                     self.update()
-                    self.render(self.grid)
+                    self.grid_records.append([self.grid.positions, self.snake.score])
+                    self.render(self.grid.positions, self.snake.score)
                     if not self.game_is_running:
                         break
                 
@@ -325,5 +349,7 @@ class Game():
 #     snake_moves_per_second=SNAKE_MOVES_PER_SECOND
 #     )
 
-# final_score = game.startGame()
+# final_score, distance_to_apple = game.startGame()
+
+# game.replay(snake_moves_per_second=SNAKE_MOVES_PER_SECOND)
 
