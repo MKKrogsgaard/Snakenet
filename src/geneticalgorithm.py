@@ -114,7 +114,7 @@ class GeneticAlgorithm():
         '''
         Performs crossover between selected agents to generate a new population.
 
-        Works by selecting a random split index, and picking genes from the first parent up until the split and from the second parent after the split. Produces two children from each pair of parents.
+        Works by selecting a parent by coinflip, and picking the current gene from that parent, until all genes are picked.
         '''
         offspring = []
         
@@ -132,23 +132,45 @@ class GeneticAlgorithm():
             
             bias_shapes = [arr.shape for arr in parent1.neural_network.biases]
 
-            weight_genes1 = np.concatenate([arr.flatten() for arr in parent1.neural_network.weights])
-            weight_genes2 = np.concatenate([arr.flatten() for arr in parent2.neural_network.weights])
+            parent1_weight_genes = np.concatenate([arr.flatten() for arr in parent1.neural_network.weights])
+            parent2_weight_genes = np.concatenate([arr.flatten() for arr in parent2.neural_network.weights])
 
-            bias_genes1 = np.concatenate([arr.flatten() for arr in parent1.neural_network.biases])
-            bias_genes2 = np.concatenate([arr.flatten() for arr in parent2.neural_network.biases])
+            parent1_bias_genes = np.concatenate([arr.flatten() for arr in parent1.neural_network.biases])
+            parent2_bias_genes = np.concatenate([arr.flatten() for arr in parent2.neural_network.biases])
 
-            weight_split_index1 = np.random.randint(0, len(weight_genes1) - 1)
-            weight_split_index2 = np.random.randint(0, len(weight_genes1) - 1)
+            child1_weight_genes = parent1_weight_genes
+            child2_weight_genes = parent2_weight_genes
 
-            bias_split_index1 = np.random.randint(0, len(bias_genes1) - 1)
-            bias_split_index2 = np.random.randint(0, len(bias_genes1) - 1)
+            child1_bias_genes = parent1_bias_genes
+            child2_bias_genes = parent2_bias_genes
 
-            child1_weight_genes = np.array(weight_genes1[0:weight_split_index1].tolist() + weight_genes2[weight_split_index1:].tolist())
-            child2_weight_genes = np.array(weight_genes1[0:weight_split_index2].tolist() + weight_genes2[weight_split_index2:].tolist())
+            weight1_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
+            weight2_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
 
-            child1_bias_genes = np.array(bias_genes1[0:bias_split_index1].tolist() + bias_genes2[bias_split_index1:].tolist())
-            child2_bias_genes = np.array(bias_genes1[0:bias_split_index2].tolist() + bias_genes2[bias_split_index2:].tolist())
+            bias1_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
+            bias2_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
+
+            for j in range(len(parent1_weight_genes)):
+                if weight1_coinflips[j] == 0:
+                    child1_weight_genes[j] = parent1_weight_genes[j]
+                else:
+                    child1_weight_genes[j] = parent2_weight_genes[j]
+
+                if weight2_coinflips[j] == 0:
+                    child2_weight_genes[j] = parent1_weight_genes[j]
+                else:
+                    child2_weight_genes[j] = parent2_weight_genes[j]
+
+            for j in range(len(parent1_bias_genes)):
+                if bias1_coinflips[j] == 0:
+                    child1_bias_genes[j] = parent1_bias_genes[j]
+                else:
+                    child1_bias_genes[j] = parent2_bias_genes[j]
+                
+                if bias2_coinflips[j] == 0:
+                    child2_bias_genes[j] = parent1_bias_genes[j]
+                else:
+                    child2_bias_genes[j] = parent2_bias_genes[j]
 
             child1.neural_network.weights = unflatten(child1_weight_genes, weight_shapes)
             child2.neural_network.weights = unflatten(child2_weight_genes, weight_shapes)
@@ -183,12 +205,11 @@ class GeneticAlgorithm():
 
             for j in range(len(flattened_weights)):
                 if np.random.uniform(0, 1) <= p:
-                    flattened_weights[j] = np.random.randn()
+                    flattened_weights[j] += np.random.randn() * 0.1
 
             for j in range(len(flattened_biases)):
                 if np.random.uniform(0, 1) <= p:
-                    flattened_biases[j] = np.random.randn()
-
+                    flattened_biases[j] += np.random.randn() * 0.1
 
             new_weights = unflatten(flattened_weights, weight_shapes)
             new_biases = unflatten(flattened_biases, bias_shapes)
@@ -206,17 +227,17 @@ class GeneticAlgorithm():
             print(f'[+] Generation: {i + 1}')
             print('Selecting agents...')
             selected_agents = self.selectAgents(agents=self.agents, p=p_selection)
+
+            highest_score = max([agent.fitness for agent in self.agents])
+            self.generation_stats.append([i + 1, highest_score])
+            print(f'Highest score of generation {i + 1}: {highest_score}')
+
             print('Performing crossover...')
             self.agents = self.crossover(agents=selected_agents, layers=self.layers, population_size=self.population_size)
             print('Performing mutation...')
             self.agents = self.mutate(agents=self.agents, p=p_mutation)
 
-            highest_score = max([agent.fitness for agent in self.agents])
-
-            self.generation_stats.append([i + 1, highest_score])
-            print(f'Highest score of generation {i + 1}: {highest_score}')
-
-
+            
 LAYERS = [
     [20*20, 100, sigmoid],
     [None, 100, sigmoid],
@@ -227,7 +248,7 @@ LAYERS = [
 
 POPULATION_SIZE = 100
 
-NUM_GENERATIONS = 50
+NUM_GENERATIONS = 10
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
@@ -237,7 +258,7 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.05)
+ga.execute(p_selection=0.1, p_mutation = 0.01)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
