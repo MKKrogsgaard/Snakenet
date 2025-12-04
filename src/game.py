@@ -152,18 +152,26 @@ class Game():
         self.final_score = score
         self.game_is_running = False # Exit the main loop cleanly
 
-    def render(self):
+    def render(self, grid: Grid):
         # Clear screen
         self.screen.fill(BACKGROUND_COLOR)
         pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
 
-        # Draw apple
-        pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(self.apple.position[0], self.apple.position[1], SQUARE_SIZE, SQUARE_SIZE))
+#    Legend:
+#         0: Unoccupied
+#         0.25: Apple
+#         0.75: Snake body
+#         1: Snake head
 
-        # Draw snake
-        pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(self.snake.position[0], self.snake.position[1], SQUARE_SIZE, SQUARE_SIZE))
-        for pos in self.snake.tail:
-            pg.draw.rect(surface=self.screen, color=SNAKE_BODY_COLOR, rect=(pos[0], pos[1], SQUARE_SIZE, SQUARE_SIZE))
+        for i in range(len(grid.positions)):
+            for j in range(len(grid.positions)):
+                current_position = grid.positions[i][j]
+                if current_position == 0.25:
+                    pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+                elif current_position == 0.75:
+                    pg.draw.rect(surface=self.screen, color=SNAKE_BODY_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+                elif current_position == 1:
+                    pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
         self.showScore(
                 score=self.snake.score,
@@ -240,11 +248,12 @@ class Game():
             )
 
         if self.snake.position == self.apple.position:
-            # Reset iterations counter
-            self.agent.iteration_counter = 0
             self.snake.score += 1
             self.snake.grow()
             self.apple.respawn()
+            if self.agent != None:
+                # Reset iterations counter
+                self.agent.iteration_counter = 0
 
         self.accumulated_time -= self.logic_time_interval
 
@@ -281,7 +290,7 @@ class Game():
                     self.update()
                     if not self.game_is_running:
                         break
-                    self.render()
+                    self.render(self.grid)
 
             else:
                 # Process input every every logical tick as well
@@ -309,7 +318,11 @@ class Game():
         pg.quit()
         return self.snake.score
 
-# game = Game(agent=None)
+game = Game(
+    agent=None,
+    game_fps=GAME_FPS,
+    snake_moves_per_second=SNAKE_MOVES_PER_SECOND
+    )
 
-#final_score = game.startGame()
+final_score = game.startGame()
 
