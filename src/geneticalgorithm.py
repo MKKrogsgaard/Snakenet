@@ -196,29 +196,19 @@ class GeneticAlgorithm():
         for i in tqdm(range(len(agents))):
             agent = agents[i]
 
-            weights = agent.neural_network.weights
-            weight_shapes = [arr.shape for arr in weights]
-
-            biases = agent.neural_network.biases
-            bias_shapes = [arr.shape for arr in biases]
-
-            flattened_weights = np.concatenate([arr.flatten() for arr in weights])
-
-            flattened_biases = np.concatenate([arr.flatten() for arr in biases])
-
-            for j in range(len(flattened_weights)):
-                if np.random.uniform(0, 1) <= p:
-                    flattened_weights[j] += np.random.randn() * 0.1
-
-            for j in range(len(flattened_biases)):
-                if np.random.uniform(0, 1) <= p:
-                    flattened_biases[j] += np.random.randn() * 0.1
-
-            new_weights = unflatten(flattened_weights, weight_shapes)
-            new_biases = unflatten(flattened_biases, bias_shapes)
-
-            agent.neural_network.weights = new_weights
-            agent.neural_network.biases = new_biases
+            for j, weight in enumerate(agent.neural_network.weights):
+                mask = np.random.uniform(0, 1, size=weight.shape) < p
+            
+                mutation_to_apply = np.random.randn(weight.shape[0], weight.shape[1]) * 0.1 # 0.1 std
+                
+                agent.neural_network.weights[j] = weight + mutation_to_apply * mask
+            
+            for j, bias in enumerate(agent.neural_network.biases):
+                mask = np.random.uniform(0, 1, size=bias.shape) < p
+            
+                mutation_to_apply = np.random.randn(bias.shape[0]) * 0.1 # 0.1 std
+                
+                agent.neural_network.biases[j] = bias + mutation_to_apply * mask
 
         return agents
             
@@ -249,7 +239,7 @@ LAYERS = [
     [None, 4, ReLU]
 ]
 
-POPULATION_SIZE = 2000
+POPULATION_SIZE = 100
 
 NUM_GENERATIONS = 10
 
