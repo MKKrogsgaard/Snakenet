@@ -105,8 +105,8 @@ class GeneticAlgorithm():
         sorted_pairs = sorted(agent_score_pairs, key=lambda pair: pair[1], reverse=True)
         sorted_agents = [pair[0] for pair in sorted_pairs]
 
-        index = int(p * len(agents))
-        top_agents = sorted_agents[0:index + 1]
+        index = max(1, int(p * len(agents)))
+        top_agents = sorted_agents[0:index]
         return top_agents
         
 
@@ -138,19 +138,19 @@ class GeneticAlgorithm():
             parent1_bias_genes = np.concatenate([arr.flatten() for arr in parent1.neural_network.biases])
             parent2_bias_genes = np.concatenate([arr.flatten() for arr in parent2.neural_network.biases])
 
-            child1_weight_genes = parent1_weight_genes
-            child2_weight_genes = parent2_weight_genes
+            length_of_weights = len(parent1_weight_genes)
+            length_of_biases = len(parent1_bias_genes)
 
-            child1_bias_genes = parent1_bias_genes
-            child2_bias_genes = parent2_bias_genes
+            child1_weight_genes = np.zeros(length_of_weights)
+            child2_weight_genes = np.zeros(length_of_weights)
 
-            weight1_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
-            weight2_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
+            child1_bias_genes = np.zeros(length_of_biases)
+            child2_bias_genes = np.zeros(length_of_biases)
 
-            bias1_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
-            bias2_coinflips = np.random.randint(0, 2, size=len(parent1_weight_genes))
+            weight1_coinflips = np.random.randint(0, 2, size=length_of_weights)
+            weight2_coinflips = np.random.randint(0, 2, size=length_of_weights)
 
-            for j in range(len(parent1_weight_genes)):
+            for j in range(length_of_weights):
                 if weight1_coinflips[j] == 0:
                     child1_weight_genes[j] = parent1_weight_genes[j]
                 else:
@@ -161,7 +161,10 @@ class GeneticAlgorithm():
                 else:
                     child2_weight_genes[j] = parent2_weight_genes[j]
 
-            for j in range(len(parent1_bias_genes)):
+            bias1_coinflips = np.random.randint(0, 2, size=length_of_biases)
+            bias2_coinflips = np.random.randint(0, 2, size=length_of_biases)
+
+            for j in range(length_of_biases):
                 if bias1_coinflips[j] == 0:
                     child1_bias_genes[j] = parent1_bias_genes[j]
                 else:
