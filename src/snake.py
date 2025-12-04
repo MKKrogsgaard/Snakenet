@@ -62,6 +62,11 @@ class Snake():
             res.append([int(pos[0] / self.square_size), int(pos[1] / self.square_size)])
         return res
 
-    def getDistanceToApple(self, apple: Apple):
+    def getDistanceToApple(self, apple: Apple, normalize=False, square_size=None, squares_per_side=None):
         '''Returns the taxicab distance from the head of the snake to the apple.'''
-        return abs(self.position[0] - apple.position[0]) + (self.position[1] - apple.position[1])
+        dist = abs(self.position[0] - apple.position[0]) + abs(self.position[1] - apple.position[1])
+
+        if normalize == True and square_size != None and squares_per_side != None:
+            dist = dist / (2*square_size*squares_per_side)
+
+        return dist 

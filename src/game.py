@@ -222,6 +222,7 @@ class Game():
         else:
             agent_input = np.array(self.grid.positions)
             agent_input = agent_input.flatten()
+            agent_input = np.append(agent_input, self.snake.getDistanceToApple(self.apple, normalize=True, square_size=SQUARE_SIZE, squares_per_side=SQUARES_PER_SIDE))
 
             agent_output = self.agent.neural_network.forward(agent_input)
             agent_output_softmaxed = softmax(agent_output)
@@ -341,7 +342,11 @@ class Game():
                         break
                 
         pg.quit()
-        return self.snake.score, self.snake.getDistanceToApple(self.apple)
+
+        final_score = self.snake.score
+        final_distance_to_apple = self.snake.getDistanceToApple(self.apple)
+
+        return final_score, final_distance_to_apple
 
 # game = Game(
 #     agent=None,
