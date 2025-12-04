@@ -17,6 +17,7 @@ def tanh(x):
     return np.tanh(x)
 
 def identity(x):
+    '''Returns x'''
     return x
 
 def unflatten(flattened_array, shapes):
@@ -72,11 +73,16 @@ class Agent():
         '''Makes the agent play a game of snake and returns the score.'''
         self.iteration_counter = 0
 
-        game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
-        apples_eaten, distance_to_apple = game.startGame() # Score and taxicab distance to the apple when the agent died
+        self.game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
+        apples_eaten, distance_to_apple = self.game.startGame() # Score and taxicab distance to the apple when the agent died
+        
+        self.apples_eaten = apples_eaten
+        self.distance_to_apple = distance_to_apple
+        self.ticks_survived_at_eval = self.ticks_survived
 
-        score = 1000*apples_eaten + self.ticks_survived - 100*distance_to_apple
+        score = 100*self.apples_eaten + 1*self.ticks_survived_at_eval - 10*self.distance_to_apple
 
+        self.fitness = score
         self.ticks_survived = 0
         return score
 
@@ -98,7 +104,6 @@ class GeneticAlgorithm():
         for i in tqdm(range(len(agents))):
             agent = agents[i]
             score = agent.getFitness(game_fps=self.game_fps, snake_moves_per_second=self.snake_moves_per_second)
-            agent.fitness = score
             results.append(score)
         return results
     
@@ -122,20 +127,23 @@ class GeneticAlgorithm():
 
         index = max(1, int(p * len(agents)))
         top_agents = sorted_agents[0:index]
+
+        self.best_agent = top_agents[0]
+
         return top_agents
         
 
     def crossover(self, agents: List[Agent], layers: List, population_size: int):
         '''
-        Performs crossover between selected agents to generate a new population.
+        Performs crossover between selected agents to generate a new population. Returns elites and offspring.
 
         Works by selecting a parent by coinflip, and picking the current gene from that parent, until all genes are picked.
         '''
-        next_generation = agents[:11] # Always include the top ten agents from the previous generation
+        elites = agents # Always include the top agents from the previous generation
         offspring = []
         
         # Each iteration will generate two children from two parents
-        for i in tqdm(range((population_size - len(next_generation))// 2)):
+        for i in tqdm(range((population_size - len(elites))// 2)):
             random_index1 = np.random.randint(0, len(agents))
             random_index2 = np.random.randint(0, len(agents))
 
@@ -200,10 +208,9 @@ class GeneticAlgorithm():
             offspring.append(child1)
             offspring.append(child2)
 
-        next_generation.extend(offspring)
-        return next_generation
+        return offspring
 
-    def mutate(self, agents: List[Agent], p: float):
+    def mutate(self, agents: List[Agent], p: float, std: float):
         '''Mutates the agents by changing a random weight. p is the probability of a mutation occuring for a given weight/bias.'''
         if not(0 <= p <= 1):
             print(f'[!] GeneticAlgorithm.mutate(): p must be in [0,1]. Setting p=1.')
@@ -215,55 +222,64 @@ class GeneticAlgorithm():
             for j, weight in enumerate(agent.neural_network.weights):
                 mask = np.random.uniform(0, 1, size=weight.shape) < p
             
-                mutation_to_apply = np.random.randn(weight.shape[0], weight.shape[1]) * 0.5 # std
+                mutation_to_apply = np.random.randn(weight.shape[0], weight.shape[1]) * std
                 
                 agent.neural_network.weights[j] = weight + mutation_to_apply * mask
             
             for j, bias in enumerate(agent.neural_network.biases):
                 mask = np.random.uniform(0, 1, size=bias.shape) < p
             
-                mutation_to_apply = np.random.randn(bias.shape[0]) * 0.5 # std
+                mutation_to_apply = np.random.randn(bias.shape[0]) * std
                 
                 agent.neural_network.biases[j] = bias + mutation_to_apply * mask
 
         return agents
             
-    def execute(self, p_selection, p_mutation):
+    def execute(self, p_selection, p_mutation, std_mutation):
         start_time = time.time()
         self.generation_stats = []
 
         # Generate intial agents
         self.agents = self.generateAgents(layers=self.layers, population_size=self.population_size)
         for i in range(self.num_generations):
-            print(f'[+] Generation: {i + 1}')
+            print(f'[+] Current generation: {i + 1}')
             print('Selecting agents...')
-            selected_agents = self.selectAgents(agents=self.agents, p=p_selection)
+            elites = self.selectAgents(agents=self.agents, p=p_selection)
 
             highest_score = max([agent.fitness for agent in self.agents])
             self.generation_stats.append([i + 1, highest_score])
 
             print('Performing crossover...')
-            self.agents = self.crossover(agents=selected_agents, layers=self.layers, population_size=self.population_size)
+            offspring = self.crossover(agents=elites, layers=self.layers, population_size=self.population_size)
+
             print('Performing mutation...')
-            self.agents = self.mutate(agents=self.agents, p=p_mutation)
+            offspring = self.mutate(agents=offspring, p=p_mutation, std=std_mutation) # Only mutate offspring
+            new_population = elites
+            new_population.extend(offspring)
+            self.agents = new_population
+
             print(f'[+] Highest score of generation {i + 1}: {highest_score}')
 
         end_time = time.time()
         total_time = end_time - start_time
         print(f'[+] Simulated {self.num_generations} generations of {self.population_size} Agents in {total_time:.2f} seconds at an average of {total_time/self.num_generations:.2f} seconds/generation.')
+        self.best_agent.game.replay(self.snake_moves_per_second, title=f'Best agent of generation {self.num_generations}') # Replay the game from the best agent in the last generation
+        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.ticks_survived_at_eval} logical tick(s)\n  Died at a distance of {self.best_agent.distance_to_apple} from the apple')
 
             
 LAYERS = [
-    [20*20, 100, ReLU],
+    [20*20 + 1, 1000, ReLU],
     [None, 100, ReLU],
     [None, 100, ReLU],
+    [None, 100, ReLU],
+    [None, 50, ReLU],
     [None, 50, ReLU],
     [None, 4, tanh]
 ]
 
 POPULATION_SIZE = 1000
 
-NUM_GENERATIONS = 100
+NUM_GENERATIONS = 5
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
@@ -273,7 +289,7 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.05)
+ga.execute(p_selection=0.1, p_mutation = 0.05, std_mutation=1)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
@@ -282,4 +298,3 @@ plt.xlabel('Generation')
 plt.ylabel('Highest score')
 plt.tight_layout()
 plt.savefig('generation_stats.png')
-plt.show(block=True)
