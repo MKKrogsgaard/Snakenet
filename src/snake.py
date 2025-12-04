@@ -1,3 +1,9 @@
+# Type hinting for classes that aren't actually imported, courtesey of StackOverflow 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from apple import Apple
+
 class Snake():
     # Constructor
     def __init__(self, body_color, head_color, x_pos_initial, y_pos_initial, square_size, min_x, max_x, min_y, max_y):
@@ -55,3 +61,7 @@ class Snake():
         for pos in self.tail:
             res.append([int(pos[0] / self.square_size), int(pos[1] / self.square_size)])
         return res
+
+    def getDistanceToApple(self, apple: Apple):
+        '''Returns the taxicab distance from the head of the snake to the apple.'''
+        return abs(self.position[0] - apple.position[0]) + (self.position[1] - apple.position[1])

@@ -3,6 +3,7 @@ from typing import List, Dict, Union
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import time
 
 from game import Game
 
@@ -14,6 +15,9 @@ def ReLU(x):
 
 def tanh(x):
     return np.tanh(x)
+
+def identity(x):
+    return x
 
 def unflatten(flattened_array, shapes):
     '''Unflattens an array given the array and the original shape.'''
@@ -69,9 +73,12 @@ class Agent():
         self.iteration_counter = 0
 
         game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
-        score = game.startGame()
+        apples_eaten, distance_to_apple = game.startGame() # Score and taxicab distance to the apple when the agent died
 
-        return 1000*score + self.ticks_survived
+        score = 1000*apples_eaten + self.ticks_survived - 100*distance_to_apple
+
+        self.ticks_survived = 0
+        return score
 
 
 
@@ -194,7 +201,7 @@ class GeneticAlgorithm():
             offspring.append(child2)
 
         next_generation.extend(offspring)
-        return agents
+        return next_generation
 
     def mutate(self, agents: List[Agent], p: float):
         '''Mutates the agents by changing a random weight. p is the probability of a mutation occuring for a given weight/bias.'''
@@ -208,22 +215,24 @@ class GeneticAlgorithm():
             for j, weight in enumerate(agent.neural_network.weights):
                 mask = np.random.uniform(0, 1, size=weight.shape) < p
             
-                mutation_to_apply = np.random.randn(weight.shape[0], weight.shape[1]) * 0.1 # 0.1 std
+                mutation_to_apply = np.random.randn(weight.shape[0], weight.shape[1]) * 0.5 # std
                 
                 agent.neural_network.weights[j] = weight + mutation_to_apply * mask
             
             for j, bias in enumerate(agent.neural_network.biases):
                 mask = np.random.uniform(0, 1, size=bias.shape) < p
             
-                mutation_to_apply = np.random.randn(bias.shape[0]) * 0.1 # 0.1 std
+                mutation_to_apply = np.random.randn(bias.shape[0]) * 0.5 # std
                 
                 agent.neural_network.biases[j] = bias + mutation_to_apply * mask
 
         return agents
             
     def execute(self, p_selection, p_mutation):
+        start_time = time.time()
         self.generation_stats = []
 
+        # Generate intial agents
         self.agents = self.generateAgents(layers=self.layers, population_size=self.population_size)
         for i in range(self.num_generations):
             print(f'[+] Generation: {i + 1}')
@@ -239,18 +248,22 @@ class GeneticAlgorithm():
             self.agents = self.mutate(agents=self.agents, p=p_mutation)
             print(f'[+] Highest score of generation {i + 1}: {highest_score}')
 
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(f'[+] Simulated {self.num_generations} generations of {self.population_size} Agents in {total_time:.2f} seconds at an average of {total_time/self.num_generations:.2f} seconds/generation.')
+
             
 LAYERS = [
     [20*20, 100, ReLU],
     [None, 100, ReLU],
+    [None, 100, ReLU],
     [None, 50, ReLU],
-    [None, 25, ReLU],
     [None, 4, tanh]
 ]
 
 POPULATION_SIZE = 1000
 
-NUM_GENERATIONS = 50
+NUM_GENERATIONS = 100
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
@@ -260,11 +273,13 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.01)
+ga.execute(p_selection=0.1, p_mutation = 0.05)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
 plt.plot(data[:, 0], data[:, 1], linestyle='--', marker='o')
 plt.xlabel('Generation')
 plt.ylabel('Highest score')
-plt.show(block=False)
+plt.tight_layout()
+plt.savefig('generation_stats.png')
+plt.show(block=True)

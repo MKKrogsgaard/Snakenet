@@ -49,37 +49,37 @@ X_POS_INITIAL = 0
 Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*SQUARE_SIZE
 # Y_POS_INITIAL = 0
 
+# For grid positions
+APPLE_VAL = 1
+BODY_VAL = -1
+HEAD_VAL = 0.5
+EMPTY_SQUARE_VAL = 0
+
 class Grid():
     '''
     Keeps track of the positions of objects in the game grid via the attribute 'position'.
     
     position[i][j] is the object that currently occupies the square at grid coordinate (i, j).
-    
-    Legend:
-        0: Unoccupied
-        0.25: Apple
-        0.75: Snake body
-        1: Snake head
     '''
     def __init__(self, squares_per_side, square_size):
         self.squares_per_side = squares_per_side
         self.square_size = square_size
         
-        self.positions = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.positions = [[EMPTY_SQUARE_VAL for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
     def update(self, snake=Snake, apple=Apple):
-        self.positions = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.positions = [[EMPTY_SQUARE_VAL for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
         apple_x, apple_y = apple.getGridPosition()
-        self.positions[apple_x][apple_y] = 0.25
+        self.positions[apple_x][apple_y] = APPLE_VAL
 
         head_x, head_y = snake.getHeadGridPosition()
-        self.positions[head_x][head_y] = 1
+        self.positions[head_x][head_y] = HEAD_VAL
         
         tailpositions = snake.getTailGridPositions()
         for pos in tailpositions:
             pos_x, pos_y = pos
-            self.positions[pos_x][pos_y] = 0.75
+            self.positions[pos_x][pos_y] = BODY_VAL
 
     def printGrid(self):
         temp_str = ""
@@ -162,20 +162,14 @@ class Game():
         self.screen.fill(BACKGROUND_COLOR)
         pg.draw.rect(surface=self.screen, color=BORDER_COLOR, rect=border_rect, width=1)
 
-#    Legend:
-#         0: Unoccupied
-#         0.25: Apple
-#         0.75: Snake body
-#         1: Snake head
-
         for i in range(len(grid.positions)):
             for j in range(len(grid.positions)):
                 current_position = grid.positions[i][j]
-                if current_position == 0.25:
+                if current_position == APPLE_VAL:
                     pg.draw.rect(surface=self.screen, color=APPLE_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
-                elif current_position == 0.75:
+                elif current_position == BODY_VAL:
                     pg.draw.rect(surface=self.screen, color=SNAKE_BODY_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
-                elif current_position == 1:
+                elif current_position == HEAD_VAL:
                     pg.draw.rect(surface=self.screen, color=SNAKE_HEAD_COLOR, rect=(i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
         self.showScore(
@@ -323,7 +317,7 @@ class Game():
                         break
                 
         pg.quit()
-        return self.snake.score
+        return self.snake.score, self.snake.getDistanceToApple(self.apple)
 
 # game = Game(
 #     agent=None,
