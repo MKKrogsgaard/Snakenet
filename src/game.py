@@ -12,6 +12,11 @@ import numpy as np
 from snake import Snake
 from apple import Apple
 
+def softmax(arr):
+    arr = np.array(arr)
+
+    return np.exp(arr) / np.sum(np.exp(arr))
+
 # Resolution
 WINDOW_SIZE = 500
 
@@ -203,16 +208,18 @@ class Game():
             agent_input = agent_input.flatten()
 
             agent_output = self.agent.neural_network.forward(agent_input)
-            max_index = np.argmax(agent_output)
+            agent_output_softmaxed = softmax(agent_output)
+
+            agent_output_direction = np.random.choice([0, 1, 2, 3], p=agent_output_softmaxed)
 
             # Press the key corresponding to the output neuron with the greatest activation
-            if max_index == 0:
+            if agent_output_direction == 0:
                 self.temp_direction = 'UP'
-            elif max_index == 1:
+            elif agent_output_direction == 1:
                 self.temp_direction = 'DOWN'
-            elif max_index == 2:
+            elif agent_output_direction == 2:
                 self.temp_direction = 'LEFT'
-            elif max_index == 3:
+            elif agent_output_direction == 3:
                 self.temp_direction = 'RIGHT'
 
     def update(self):
@@ -280,7 +287,7 @@ class Game():
         if self.agent != None:
             while self.game_is_running:
                 # Prevents agents from running in circles to stave off their inevitable doom
-                if self.agent.iteration_counter > self.agent.max_loop_iterations:
+                if self.agent.tick_counter > self.agent.max_ticks:
                     self.gameOver(
                         score=self.snake.score,
                         color=GAME_OVER_TEXT_COLOR,
@@ -295,7 +302,8 @@ class Game():
                 if not self.game_is_running:
                     break
             
-                self.agent.iteration_counter += 1
+                self.agent.tick_counter += 1
+                self.agent.ticks_survived += 1
 
         # Human loop
         else:

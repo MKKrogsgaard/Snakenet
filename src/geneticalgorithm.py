@@ -12,6 +12,9 @@ def sigmoid(x):
 def ReLU(x):
     return np.maximum(0, x)
 
+def tanh(x):
+    return np.tanh(x)
+
 def unflatten(flattened_array, shapes):
     '''Unflattens an array given the array and the original shape.'''
     result = []
@@ -57,15 +60,20 @@ class Agent():
     def __init__(self, layers):
         self.neural_network = Network(layers=layers)
         self.fitness = 0
-        self.max_loop_iterations = 1000
-        self.iteration_counter = 0
+        self.max_ticks = 1000
+        self.tick_counter = 0
+        self.ticks_survived = 0
     
     def getFitness(self, game_fps, snake_moves_per_second):
         '''Makes the agent play a game of snake and returns the score.'''
         self.iteration_counter = 0
 
         game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
-        return game.startGame()
+        score = game.startGame()
+
+        return 1000*score + self.ticks_survived
+
+
 
 class GeneticAlgorithm():
     def __init__(self, layers: List, population_size: int, num_generations: int, game_fps: int, snake_moves_per_second: int):
@@ -116,10 +124,11 @@ class GeneticAlgorithm():
 
         Works by selecting a parent by coinflip, and picking the current gene from that parent, until all genes are picked.
         '''
+        next_generation = agents[:11] # Always include the top ten agents from the previous generation
         offspring = []
         
         # Each iteration will generate two children from two parents
-        for i in tqdm(range((population_size - len(agents))// 2)):
+        for i in tqdm(range((population_size - len(next_generation))// 2)):
             random_index1 = np.random.randint(0, len(agents))
             random_index2 = np.random.randint(0, len(agents))
 
@@ -184,7 +193,7 @@ class GeneticAlgorithm():
             offspring.append(child1)
             offspring.append(child2)
 
-        agents.extend(offspring)
+        next_generation.extend(offspring)
         return agents
 
     def mutate(self, agents: List[Agent], p: float):
@@ -236,12 +245,12 @@ LAYERS = [
     [None, 100, ReLU],
     [None, 50, ReLU],
     [None, 25, ReLU],
-    [None, 4, ReLU]
+    [None, 4, tanh]
 ]
 
-POPULATION_SIZE = 100
+POPULATION_SIZE = 1000
 
-NUM_GENERATIONS = 10
+NUM_GENERATIONS = 50
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
@@ -251,11 +260,11 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.1)
+ga.execute(p_selection=0.1, p_mutation = 0.01)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
 plt.plot(data[:, 0], data[:, 1], linestyle='--', marker='o')
 plt.xlabel('Generation')
 plt.ylabel('Highest score')
-plt.show(block=True)
+plt.show(block=False)
