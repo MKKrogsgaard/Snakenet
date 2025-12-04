@@ -41,8 +41,8 @@ GAME_OVER_FONT_SIZE = 22
 
 # Instantiate the snake on the left side of the screen
 X_POS_INITIAL = 0
-# Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*SQUARE_SIZE
-Y_POS_INITIAL = 0
+Y_POS_INITIAL = random.randint(0, SQUARES_PER_SIDE - 1)*SQUARE_SIZE
+# Y_POS_INITIAL = 0
 
 class Grid():
     '''
@@ -254,14 +254,14 @@ class Game():
             if self.agent != None:
                 # Reset iterations counter
                 self.agent.iteration_counter = 0
-
-        self.accumulated_time -= self.logic_time_interval
+        if self.agent == None:
+            self.accumulated_time -= self.logic_time_interval
 
     def startGame(self):
-        # Pygame setup, returns a tuple with the number of successfull and failed inits
-        n_successful, n_errors  = pg.init()
-        # Only show status and game window if a human is playing
+        # If a human is playing
         if self.agent == None:
+            # Pygame setup, returns a tuple with the number of successfull and failed inits
+            n_successful, n_errors  = pg.init()
             if n_errors > 0:
                 print(f'[!] Encountered {n_errors} error(s) when running pygame.init(), aborting...')
             else:
@@ -276,53 +276,52 @@ class Game():
         self.accumulated_time = 0
         self.temp_direction = self.snake.direction
 
-        while self.game_is_running:
-            deltaTime = self.clock.tick(self.game_fps) / 1000 # In seconds
-            self.accumulated_time += deltaTime
+        # Agent loop
+        if self.agent != None:
+            while self.game_is_running:
+                # Prevents agents from running in circles to stave off their inevitable doom
+                if self.agent.iteration_counter > self.agent.max_loop_iterations:
+                    self.gameOver(
+                        score=self.snake.score,
+                        color=GAME_OVER_TEXT_COLOR,
+                        font=GAME_OVER_FONT,
+                        font_size=GAME_OVER_FONT_SIZE,
+                        message='Too many iterations! Final score: '
+                    )
+                
+                self.grid.update(self.snake, self.apple)
+                self.processInput()
+                self.update()
+                if not self.game_is_running:
+                    break
+            
+                self.agent.iteration_counter += 1
 
-            self.logic_time_interval = 1 / self.snake_moves_per_second # How long should a logical tick be for the current frame
+        # Human loop
+        else:
+            while self.game_is_running:
+                deltaTime = self.clock.tick(self.game_fps) / 1000 # In seconds
+                self.accumulated_time += deltaTime
 
-            if self.agent == None:
+                self.logic_time_interval = 1 / self.snake_moves_per_second # How long should a logical tick be for the current frame
+
                 # Process input every frame, but update movement and render for every logical tick
                 self.processInput()
                 while self.accumulated_time >= self.logic_time_interval:
                     self.grid.update(self.snake, self.apple)
                     self.update()
-                    if not self.game_is_running:
-                        break
                     self.render(self.grid)
-
-            else:
-                # Process input every every logical tick as well
-                while self.accumulated_time >= self.logic_time_interval:
-                    
-                    # Prevents agents from running in circles to stave off their inevitable doom
-                    if self.agent.iteration_counter > self.agent.max_loop_iterations:
-                        self.gameOver(
-                            score=self.snake.score,
-                            color=GAME_OVER_TEXT_COLOR,
-                            font=GAME_OVER_FONT,
-                            font_size=GAME_OVER_FONT_SIZE,
-                            message='Too many iterations! Final score: '
-                        )
-                    
-                    self.grid.update(self.snake, self.apple)
-                    self.processInput()
-                    self.update()
                     if not self.game_is_running:
                         break
-                    # Do not attempt to render here
-
-                    self.agent.iteration_counter += 1
-
+                
         pg.quit()
         return self.snake.score
 
-game = Game(
-    agent=None,
-    game_fps=GAME_FPS,
-    snake_moves_per_second=SNAKE_MOVES_PER_SECOND
-    )
+# game = Game(
+#     agent=None,
+#     game_fps=GAME_FPS,
+#     snake_moves_per_second=SNAKE_MOVES_PER_SECOND
+#     )
 
-final_score = game.startGame()
+# final_score = game.startGame()
 
