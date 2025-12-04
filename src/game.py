@@ -240,6 +240,8 @@ class Game():
             )
 
         if self.snake.position == self.apple.position:
+            # Reset iterations counter
+            self.agent.iteration_counter = 0
             self.snake.score += 1
             self.snake.grow()
             self.apple.respawn()
@@ -265,10 +267,6 @@ class Game():
         self.accumulated_time = 0
         self.temp_direction = self.snake.direction
 
-        if self.agent != None:
-            max_loop_iterations = 10000
-            iteration_counter = 0
-
         while self.game_is_running:
             deltaTime = self.clock.tick(self.game_fps) / 1000 # In seconds
             self.accumulated_time += deltaTime
@@ -290,7 +288,7 @@ class Game():
                 while self.accumulated_time >= self.logic_time_interval:
                     
                     # Prevents agents from running in circles to stave off their inevitable doom
-                    if iteration_counter > max_loop_iterations:
+                    if self.agent.iteration_counter > self.agent.max_loop_iterations:
                         self.gameOver(
                             score=self.snake.score,
                             color=GAME_OVER_TEXT_COLOR,
@@ -306,7 +304,7 @@ class Game():
                         break
                     # Do not attempt to render here
 
-                    iteration_counter += 1
+                    self.agent.iteration_counter += 1
 
         pg.quit()
         return self.snake.score

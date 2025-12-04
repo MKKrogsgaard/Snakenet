@@ -24,6 +24,7 @@ def unflatten(flattened_array, shapes):
 class Network():
     def __init__(self, layers):
         self.weights = []
+        self.biases = []
         self.activation_functions = []
 
         for layer in layers:
@@ -36,13 +37,14 @@ class Network():
             activation_function = layer[2]
 
             self.weights.append(np.random.randn(input_size, output_size))
+            self.biases.append(np.random.randn(output_size))
             self.activation_functions.append(activation_function)
 
     def forward(self, input_data):
         '''Forward propagation.'''
         # Loop through the layers
         for i in range(len(self.weights)):
-            a = np.dot(input_data, self.weights[i])
+            a = np.dot(input_data, self.weights[i]) + np.array(self.biases[i])
             z = self.activation_functions[i](a)
             
             input_data = z # Pass the outputs from the previous layer to the next layer
@@ -54,6 +56,8 @@ class Agent():
     def __init__(self, layers):
         self.neural_network = Network(layers=layers)
         self.fitness = 0
+        self.max_loop_iterations = 10000
+        self.iteration_counter = 0
     
     def getFitness(self, game_fps, snake_moves_per_second):
         '''Makes the agent play a game of snake and returns the score.'''
@@ -123,18 +127,31 @@ class GeneticAlgorithm():
             child1 = Agent(layers=layers)
             child2 = Agent(layers=layers)
 
-            shapes = [arr.shape for arr in parent1.neural_network.weights]
+            weight_shapes = [arr.shape for arr in parent1.neural_network.weights]
+            
+            bias_shapes = [arr.shape for arr in parent1.neural_network.biases]
 
-            genes1 = np.concatenate([arr.flatten() for arr in parent1.neural_network.weights])
-            genes2 = np.concatenate([arr.flatten() for arr in parent2.neural_network.weights])
+            weight_genes1 = np.concatenate([arr.flatten() for arr in parent1.neural_network.weights])
+            weight_genes2 = np.concatenate([arr.flatten() for arr in parent2.neural_network.weights])
 
-            split_index = np.random.randint(0, len(genes1) - 1)
+            bias_genes1 = np.concatenate([arr.flatten() for arr in parent1.neural_network.biases])
+            bias_genes2 = np.concatenate([arr.flatten() for arr in parent2.neural_network.biases])
 
-            child1_genes = np.array(genes1[0:split_index].tolist() + genes2[split_index:].tolist())
-            child2_genes = np.array(genes2[0:split_index].tolist() + genes1[split_index:].tolist())
+            weight_split_index = np.random.randint(0, len(weight_genes1) - 1)
 
-            child1.neural_network.weights = unflatten(child1_genes, shapes)
-            child2.neural_network.weights = unflatten(child2_genes, shapes)
+            bias_split_index = np.random.randint(0, len(bias_genes1) - 1)
+
+            child1_weight_genes = np.array(weight_genes1[0:weight_split_index].tolist() + weight_genes2[weight_split_index:].tolist())
+            child2_weight_genes = np.array(weight_genes2[0:weight_split_index].tolist() + weight_genes1[weight_split_index:].tolist())
+
+            child1_bias_genes = np.array(bias_genes1[0:bias_split_index].tolist() + bias_genes2[bias_split_index:].tolist())
+            child2_bias_genes = np.array(bias_genes2[0:bias_split_index].tolist() + bias_genes1[bias_split_index:].tolist())
+
+            child1.neural_network.weights = unflatten(child1_weight_genes, weight_shapes)
+            child2.neural_network.weights = unflatten(child2_weight_genes, weight_shapes)
+
+            child1.neural_network.biases = unflatten(child1_bias_genes, bias_shapes)
+            child2.neural_network.biases = unflatten(child2_bias_genes, bias_shapes)
 
             offspring.append(child1)
             offspring.append(child2)
@@ -151,14 +168,24 @@ class GeneticAlgorithm():
         for agent in agents:
             if np.random.uniform(0, 1) <= p:
                 weights = agent.neural_network.weights
-                shapes = [arr.shape for arr in weights]
+                weight_shapes = [arr.shape for arr in weights]
+
+                biases = agent.neural_network.biases
+                bias_shapes = [arr.shape for arr in biases]
 
                 flattened_weights = np.concatenate([arr.flatten() for arr in weights])
                 random_index = np.random.randint(0, len(flattened_weights))
                 flattened_weights[random_index] = np.random.randn()
 
-                new_weights = unflatten(flattened_weights, shapes)
+                flattened_biases = np.concatenate([arr.flatten() for arr in biases])
+                random_index = np.random.randint(0, len(flattened_biases))
+                flattened_biases[random_index] = np.random.randn()
+
+                new_weights = unflatten(flattened_weights, weight_shapes)
+                new_biases = unflatten(flattened_biases, bias_shapes)
+
                 agent.neural_network.weights = new_weights
+                agent.neural_network.biases = new_biases
 
         return agents
             
@@ -183,7 +210,7 @@ LAYERS = [
 
 POPULATION_SIZE = 100
 
-NUM_GENERATIONS = 5
+NUM_GENERATIONS = 10
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
