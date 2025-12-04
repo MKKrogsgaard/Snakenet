@@ -1,5 +1,6 @@
 from typing import List, Dict, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -27,12 +28,12 @@ class Network():
         self.biases = []
         self.activation_functions = []
 
-        for layer in layers:
+        for index, layer in enumerate(layers):
             if layer[0] != None:
                 input_size = layer[0]
             else:
                 # Use the output size from the previous layer as the new input size
-                input_size = layers[layers.index(layer) - 1][1]
+                input_size = layers[index - 1][1]
             output_size = layer[1]
             activation_function = layer[2]
 
@@ -56,11 +57,13 @@ class Agent():
     def __init__(self, layers):
         self.neural_network = Network(layers=layers)
         self.fitness = 0
-        self.max_loop_iterations = 10000
+        self.max_loop_iterations = 1000
         self.iteration_counter = 0
     
     def getFitness(self, game_fps, snake_moves_per_second):
         '''Makes the agent play a game of snake and returns the score.'''
+        self.iteration_counter = 0
+
         game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
         return game.startGame()
 
@@ -99,7 +102,7 @@ class GeneticAlgorithm():
 
         agent_score_pairs = zip(agents, scores)
 
-        sorted_pairs = sorted(agent_score_pairs, key=lambda pair: pair[1])
+        sorted_pairs = sorted(agent_score_pairs, key=lambda pair: pair[1], reverse=True)
         sorted_agents = [pair[0] for pair in sorted_pairs]
 
         index = int(p * len(agents))
@@ -196,35 +199,49 @@ class GeneticAlgorithm():
         return agents
             
     def execute(self, p_selection, p_mutation):
+        self.generation_stats = []
+
         self.agents = self.generateAgents(layers=self.layers, population_size=self.population_size)
         for i in range(self.num_generations):
             print(f'[+] Generation: {i + 1}')
             print('Selecting agents...')
             selected_agents = self.selectAgents(agents=self.agents, p=p_selection)
-            print('Performing crossover/mutation...')
+            print('Performing crossover...')
             self.agents = self.crossover(agents=selected_agents, layers=self.layers, population_size=self.population_size)
+            print('Performing mutation...')
             self.agents = self.mutate(agents=self.agents, p=p_mutation)
-            print(f'Highest score of generation {i + 1}: {max([agent.fitness for agent in self.agents])}')
+
+            highest_score = max([agent.fitness for agent in self.agents])
+
+            self.generation_stats.append([i + 1, highest_score])
+            print(f'Highest score of generation {i + 1}: {highest_score}')
 
 
 LAYERS = [
     [20*20, 100, sigmoid],
+    [None, 100, sigmoid],
+    [None, 100, sigmoid],
     [None, 50, sigmoid],
-    [None, 25, sigmoid],
-    [None, 4, ReLU]
+    [None, 4, sigmoid]
 ]
 
 POPULATION_SIZE = 100
 
-NUM_GENERATIONS = 10
+NUM_GENERATIONS = 50
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
     population_size=POPULATION_SIZE,
     num_generations=NUM_GENERATIONS,
-    game_fps=10000,
-    snake_moves_per_second=10000
+    game_fps=0, # Uncapped
+    snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.2, p_mutation = 0.1)
+ga.execute(p_selection=0.1, p_mutation = 0.05)
 
+data = np.array(ga.generation_stats)
+plt.title('Highest score for each generation')
+plt.plot(data[:, 0], data[:, 1], linestyle='--', marker='o')
+plt.xlabel('Generation')
+plt.ylabel('Highest score')
+plt.show(block=True)
