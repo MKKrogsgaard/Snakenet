@@ -4,11 +4,15 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from geneticalgorithm import Agent
 
-import random
+import os
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
 import pygame as pg
+
+import random
 import time
 import numpy as np
-import os
 import json
 
 from snake import Snake
@@ -221,9 +225,18 @@ class Game():
         pg.display.set_caption(title)
 
         self.clock = pg.time.Clock()
-        for grid_state in self.grid_records:
-            self.render(grid_state[0], grid_state[1])
+        i = 0
+        while i < len(self.grid_records):
             self.clock.tick(fps)
+
+            grid_state = self.grid_records[i]
+            self.render(grid_state[0], grid_state[1])
+
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    i = len(self.grid_records)
+
+            i += 1
 
     def saveGridRecordsToJSON(self, filepath):
         '''Saves a json representation of self.grid_records to filepath.'''
@@ -349,7 +362,7 @@ class Game():
             self.apple.respawn()
             if self.agent != None:
                 # Reset iterations counter
-                self.agent.tick_counter = 0
+                self.agent.ticks_without_eating = 0
         if self.agent == None:
             self.accumulated_time -= self.logic_time_interval
 
@@ -376,7 +389,7 @@ class Game():
         if self.agent != None:
             while self.game_is_running:
                 # Prevents agents from running in circles to stave off their inevitable doom
-                if self.agent.tick_counter > self.agent.max_ticks_without_eating:
+                if self.agent.ticks_without_eating > self.agent.max_ticks_without_eating:
                     self.gameOver(
                         score=self.snake.score,
                         color=GAME_OVER_TEXT_COLOR,
@@ -391,9 +404,9 @@ class Game():
                 self.grid_records.append([self.grid.positions, self.snake.score])
                 if not self.game_is_running:
                     break
-            
-                self.agent.tick_counter += 1
+                
                 self.agent.ticks_without_eating += 1
+                self.agent.total_ticks_survived += 1
 
         # Human loop
         else:

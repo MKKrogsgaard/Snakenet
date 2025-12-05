@@ -1,10 +1,11 @@
-from typing import List, Dict, Union
+from typing import List
 
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import time
-import copy
+import os
+import concurrent.futures
+import multiprocessing
 
 from game import Game
 
@@ -36,6 +37,50 @@ def unflatten(flattened_array, shapes):
         result.append(flattened_array[index: index + size].reshape(shape))
         index += size
     return result
+
+def flattenGenome(agent: 'Agent'):
+    '''Returns flattened versions of an agents weights/biases, together with the shapes neede to unflatten them.'''
+    weight_shapes = [arr.shape for arr in agent.neural_network.weights]
+    bias_shapes = [arr.shape for arr in agent.neural_network.biases]
+
+    weight_genes = np.concatenate([arr.flatten() for arr in agent.neural_network.weights])
+    bias_genes = np.concatenate([arr.flatten() for arr in agent.neural_network.biases])
+
+    return weight_genes, weight_shapes, bias_genes, bias_shapes
+
+def task_evaluateGenome(task):
+    '''
+    Worker function. Must be defined at top level for parallelization.
+    
+    task is a tuple: (weight_genes, weight_shapes, bias_genes, bias_shapes, layers, game_fps, snake_moves_per_second, num_repeats)
+
+    Returns: (mean_score, apples_eaten, total_ticks_survived, mean_distance_to_apple, game)
+    '''
+
+    # Limits how many threads numerical libraries can use, to (hopefully) leave enough free threads for the fitness evaluation
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
+    os.environ.setdefault("MKL_NUM_THREADS", "1")
+    os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
+    weight_genes, weight_shapes, bias_genes, bias_shapes, layers, game_fps, snake_moves_per_second, num_repeats = task
+
+    # Reconstruct the agent
+    agent = Agent(layers=layers)
+    agent.neural_network.weights = unflatten(weight_genes, weight_shapes)
+    agent.neural_network.biases = unflatten(bias_genes, bias_shapes)
+
+    scores = []
+    for i in range(num_repeats):
+        temp_score = agent.getFitness(game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
+        scores.append(temp_score)
+    
+    mean_score = np.mean(scores)
+    apples_eaten = agent.apples_eaten
+    total_ticks_survived = agent.total_ticks_survived
+    mean_distance_to_apple = agent.mean_distance_to_apple
+
+    return mean_score, apples_eaten, total_ticks_survived, mean_distance_to_apple
+
 
 class Network():
     def __init__(self, layers):
@@ -72,14 +117,12 @@ class Agent():
     def __init__(self, layers):
         self.neural_network = Network(layers=layers)
         self.fitness = 0
-        self.max_ticks_without_eating = 500
-        self.tick_counter = 0
+        self.max_ticks_without_eating = 100
         self.ticks_without_eating = 0
         self.total_ticks_survived = 0
     
     def getFitness(self, game_fps, snake_moves_per_second):
         '''Makes the agent play a game of snake and returns the score.'''
-        self.tick_counter = 0
         self.total_ticks_survived = 0
 
         self.game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
@@ -89,9 +132,8 @@ class Agent():
         self.final_distance_to_apple = final_distance_to_apple
         self.mean_distance_to_apple = mean_distance_to_apple
         self.final_distance_to_closest_wall = final_distance_to_closest_wall
-        self.total_ticks_survived += self.ticks_without_eating
 
-        score = 2*self.apples_eaten + 0.01*self.total_ticks_survived - 1*self.mean_distance_to_apple
+        score = 10*self.apples_eaten + 0.01*self.total_ticks_survived - 10*self.mean_distance_to_apple
 
         self.fitness = score
         self.ticks_without_eating = 0
@@ -105,22 +147,41 @@ class GeneticAlgorithm():
         self.population_size = population_size
         self.num_generations = num_generations
 
+        self.best_historical_score = 0
+        self.best_game = None
+
     def generateAgents(self, layers, population_size):
         return [Agent(layers=layers) for i in range(population_size)]
 
-    def getAgentFitnessScores(self, agents: List[Agent]):
-        results = []
-        for i in tqdm(range(len(agents))):
-            agent = agents[i]
-            temp_scores = []
-            for i in range(10):
-                temp_fitness = agent.getFitness(game_fps=self.game_fps, snake_moves_per_second=self.snake_moves_per_second)
-                temp_scores.append(temp_fitness)
+    def getAgentFitnessScores(self, agents: List[Agent], num_repeats_per_agent):
+        try:
+            multiprocessing.set_start_method('spawn', force=False)
+        except RuntimeError:
+            # Start method has already been set, do nothing
+            pass
 
-            score = np.mean(temp_scores)
-            results.append(score)
+        # Set number of workers to available CPU cores (minus 1 for the OS)
+        max_workers = max(1, os.cpu_count() - 1)
 
-            agent.fitness = score
+        tasks = []
+        for agent in agents:
+            weight_genes, weight_shapes, bias_genes, bias_shapes = flattenGenome(agent)
+            tasks.append((weight_genes, weight_shapes, bias_genes, bias_shapes, self.layers, self.game_fps, self.snake_moves_per_second, num_repeats_per_agent))
+        
+        results = [None for i in range(len(agents))]
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(task_evaluateGenome, task) for task in tasks] # Represents the results of the scheduled CPU calls
+            for i in tqdm(range(len(futures))):
+                mean_score, apples_eaten, total_ticks_survived, mean_distance_to_apple = futures[i].result()
+                
+                agents[i].fitness = mean_score
+                agents[i].apples_eaten = apples_eaten
+                agents[i].total_ticks_survived = total_ticks_survived
+                agents[i].mean_distance_to_apple = mean_distance_to_apple
+
+                results[i] = mean_score
+
         return results
     
     def selectAgents(self, agents: List[Agent], p: int):
@@ -134,7 +195,7 @@ class GeneticAlgorithm():
             print(f'[!] GeneticAlgorithm.selectAgents(): p cannot be greater than 1. Setting p=1.')
             p = 1
         
-        scores = self.getAgentFitnessScores(agents=agents)
+        scores = self.getAgentFitnessScores(agents=agents, num_repeats_per_agent=10)
 
         agent_score_pairs = zip(agents, scores)
 
@@ -149,7 +210,12 @@ class GeneticAlgorithm():
 
         if current_top_score > old_best_agent_score:
             self.best_agent = top_agents[0]
-            print(f'[i] Updated best agent. Previous/current best agent avg. fitness in this run: {old_best_agent_score:.2f} / {current_top_score:.2f}')
+            # Save a replay of the best agent
+            self.best_agent.game = Game(agent=self.best_agent, game_fps=self.game_fps, snake_moves_per_second=self.snake_moves_per_second)
+            self.best_agent.game.startGame()
+            self.best_agent.game.saveGridRecordsToJSON(f'replays/best-agent.json')
+        else:
+            top_agents[0] = self.best_agent
 
         return top_agents
         
@@ -159,11 +225,10 @@ class GeneticAlgorithm():
 
         Works by selecting a parent by coinflip, and picking the current gene from that parent, until all genes are picked.
         '''
-        elites = agents[:10] # Always include the top agents from the previous generation
         offspring = []
         
         # Each iteration will generate two children from two parents
-        iterations_needed = (population_size - len(elites)) // 2
+        iterations_needed = (population_size - len(agents)) // 2
 
         random_indeces_1 = np.random.randint(0, len(agents), iterations_needed)
         random_indeces_2 = np.random.randint(0, len(agents), iterations_needed)
@@ -263,13 +328,21 @@ class GeneticAlgorithm():
         # Generate intial agents
         self.agents = self.generateAgents(layers=self.layers, population_size=self.population_size)
         self.best_agent = self.agents[0]
+
+        self.best_historical_score = 0
         for i in range(self.num_generations):
             print(f'[+] Current generation: {i + 1}')
             print('Selecting agents...')
             elites = self.selectAgents(agents=self.agents, p=p_selection)
 
-            highest_score = max([agent.fitness for agent in self.agents])
-            self.generation_stats.append([i + 1, highest_score])
+            highest_current_score = max([agent.fitness for agent in self.agents])
+            print(f'[+] Highest average fitness of generation {i + 1}: {highest_current_score}')
+
+            # If the highest score from this generation exceeds the highest all-time score, play the replay
+            self.generation_stats.append([i + 1, highest_current_score])
+            if self.best_historical_score < highest_current_score:
+                self.best_agent.game.loadGridRecordsFromJSON(f'replays/best-agent.json')
+                self.best_agent.game.replay(snake_moves_per_second=self.snake_moves_per_second, title=f'Current best snake (generation {i + 1})')
 
             print('Performing crossover...')
             offspring = self.crossover(agents=elites, layers=self.layers, population_size=self.population_size)
@@ -278,47 +351,17 @@ class GeneticAlgorithm():
             offspring = self.mutate(agents=offspring, p=p_mutation, std=std_mutation) # Only mutate offspring
             new_population = elites
             new_population.extend(offspring)
-            new_population.extend([self.best_agent]) # Always keep the all time best agent
+
             self.agents = new_population
-    
-            print(f'[+] Highest fitness of generation {i + 1}: {highest_score}')
+
+            
+
 
         end_time = time.time()
         total_time = end_time - start_time
         print(f'[+] Simulated {self.num_generations} generations of {self.population_size} Agents in {total_time:.2f} seconds at an average of {total_time/self.num_generations:.2f} seconds/generation.')
         
-        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.total_ticks_survived} logical tick(s)\n  Died at a distance of {self.best_agent.final_distance_to_apple} from the apple')
+        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.total_ticks_survived} logical tick(s)\n  With mean distance to appple {self.best_agent.mean_distance_to_apple} from the apple')
 
-        self.best_agent.game.saveGridRecordsToJSON(f'replays/best-agent.json')
-
-        self.best_agent.game.replay(self.snake_moves_per_second, title=f'Best agent of generation {self.num_generations}') # Replay the game from the best agent in the last generation
         
-LAYERS = [
-    [2 + 2 + 1 + 4, 100, ELU],
-    [None, 100, ELU],
-    [None, 100, ELU],
-    [None, 50, ELU],
-    [None, 4, sigmoid]
-]
 
-POPULATION_SIZE = 200
-
-NUM_GENERATIONS = 100
-
-ga = GeneticAlgorithm(
-    layers=LAYERS,
-    population_size=POPULATION_SIZE,
-    num_generations=NUM_GENERATIONS,
-    game_fps=0, # Uncapped
-    snake_moves_per_second=7
-)
-
-ga.execute(p_selection=0.1, p_mutation = 0.3, std_mutation=1)
-
-data = np.array(ga.generation_stats)
-plt.title('Highest score for each generation')
-plt.plot(data[:, 0], data[:, 1], linestyle='--', marker='o')
-plt.xlabel('Generation')
-plt.ylabel('Highest score')
-plt.tight_layout()
-plt.savefig('generation_stats.png')
