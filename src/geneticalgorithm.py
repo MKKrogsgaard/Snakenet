@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import time
+import copy
 
 from game import Game
 
@@ -82,20 +83,19 @@ class Agent():
         self.total_ticks_survived = 0
 
         self.game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
-        apples_eaten, distance_to_apple, distance_to_closest_wall = self.game.startGame() # distance_to_apple is in taxicab distance
+        apples_eaten, final_distance_to_apple, final_distance_to_closest_wall, mean_distance_to_apple = self.game.startGame() # distance_to_apple is in taxicab distance
         
         self.apples_eaten = apples_eaten
-        self.distance_to_apple = distance_to_apple
-        self.distance_to_closest_wall = distance_to_closest_wall
+        self.final_distance_to_apple = final_distance_to_apple
+        self.mean_distance_to_apple = mean_distance_to_apple
+        self.final_distance_to_closest_wall = final_distance_to_closest_wall
         self.total_ticks_survived += self.ticks_without_eating
 
-        score = 10*self.apples_eaten + 0.01*self.total_ticks_survived - 1*self.distance_to_apple
+        score = 5*self.apples_eaten + 0.01*self.total_ticks_survived - 2*self.mean_distance_to_apple
 
         self.fitness = score
         self.ticks_without_eating = 0
         return score
-
-
 
 class GeneticAlgorithm():
     def __init__(self, layers: List, population_size: int, num_generations: int, game_fps: int, snake_moves_per_second: int):
@@ -119,6 +119,8 @@ class GeneticAlgorithm():
 
             score = np.mean(temp_scores)
             results.append(score)
+
+            agent.fitness = score
         return results
     
     def selectAgents(self, agents: List[Agent], p: int):
@@ -147,11 +149,10 @@ class GeneticAlgorithm():
 
         if current_top_score > old_best_agent_score:
             self.best_agent = top_agents[0]
-            print(f'[i] Updated best agent. Previous/current best agent score in this run: {old_best_agent_score} / {current_top_score}')
+            print(f'[i] Updated best agent. Previous/current best agent avg. fitness in this run: {old_best_agent_score:.2f} / {current_top_score:.2f}')
 
         return top_agents
         
-
     def crossover(self, agents: List[Agent], layers: List, population_size: int):
         '''
         Performs crossover between selected agents to generate a new population. Returns elites and offspring.
@@ -286,25 +287,23 @@ class GeneticAlgorithm():
         total_time = end_time - start_time
         print(f'[+] Simulated {self.num_generations} generations of {self.population_size} Agents in {total_time:.2f} seconds at an average of {total_time/self.num_generations:.2f} seconds/generation.')
         
-        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.total_ticks_survived} logical tick(s)\n  Died at a distance of {self.best_agent.distance_to_apple} from the apple')
+        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.total_ticks_survived} logical tick(s)\n  Died at a distance of {self.best_agent.final_distance_to_apple} from the apple')
 
         self.best_agent.game.saveGridRecordsToJSON(f'replays/best-agent.json')
 
         self.best_agent.game.replay(self.snake_moves_per_second, title=f'Best agent of generation {self.num_generations}') # Replay the game from the best agent in the last generation
         
-            
 LAYERS = [
-    [2 + 2 + 1 + 4, 10, ELU],
-    [None, 10, ELU],
-    [None, 10, ELU],
+    [2 + 2 + 1 + 4, 100, ELU],
+    [None, 100, ELU],
+    [None, 50, ELU],
     [None, 5, ELU],
-    [None, 5, ELU],
-    [None, 4, identity]
+    [None, 4, sigmoid]
 ]
 
-POPULATION_SIZE = 1000
+POPULATION_SIZE = 100
 
-NUM_GENERATIONS = 10
+NUM_GENERATIONS = 100
 
 ga = GeneticAlgorithm(
     layers=LAYERS,

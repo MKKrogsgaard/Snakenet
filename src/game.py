@@ -110,6 +110,8 @@ class Game():
 
         self.grid_records = []
 
+        self.snake_distance_to_apple_record = []
+
         self.snake = Snake(
             body_color=SNAKE_BODY_COLOR,
             head_color=SNAKE_HEAD_COLOR, 
@@ -321,6 +323,7 @@ class Game():
             self.snake.direction = 'RIGHT'
 
         self.snake.move()
+        self.snake_distance_to_apple_record.append(self.snake.getDistanceToApple(apple=self.apple, normalize=True))
 
         if self.snake.isOutOfBounds():
             self.gameOver(
@@ -415,8 +418,9 @@ class Game():
         final_score = self.snake.score
         final_distance_to_apple = self.snake.getDistanceToApple(self.apple, normalize=True)
         final_distance_to_closest_wall = min(self.snake.getDistanceToWalls(normalize=True))
+        mean_distance_to_apple = np.mean(self.snake_distance_to_apple_record)
 
-        return final_score, final_distance_to_apple, final_distance_to_closest_wall
+        return final_score, final_distance_to_apple, final_distance_to_closest_wall, mean_distance_to_apple
 
 game = Game(
     game_fps=GAME_FPS,
