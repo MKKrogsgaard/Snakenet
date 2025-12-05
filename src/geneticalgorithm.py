@@ -89,7 +89,7 @@ class Agent():
         self.distance_to_closest_wall = distance_to_closest_wall
         self.total_ticks_survived += self.ticks_without_eating
 
-        score = self.apples_eaten - self.distance_to_apple
+        score = 10*self.apples_eaten + 0.01*self.total_ticks_survived - 1*self.distance_to_apple
 
         self.fitness = score
         self.ticks_without_eating = 0
@@ -112,7 +112,12 @@ class GeneticAlgorithm():
         results = []
         for i in tqdm(range(len(agents))):
             agent = agents[i]
-            score = agent.getFitness(game_fps=self.game_fps, snake_moves_per_second=self.snake_moves_per_second)
+            temp_scores = []
+            for i in range(10):
+                temp_fitness = agent.getFitness(game_fps=self.game_fps, snake_moves_per_second=self.snake_moves_per_second)
+                temp_scores.append(temp_fitness)
+
+            score = np.mean(temp_scores)
             results.append(score)
         return results
     
@@ -137,12 +142,12 @@ class GeneticAlgorithm():
         index = max(1, int(p * len(agents)))
         top_agents = sorted_agents[0:index]
 
-        old_top_score = self.best_agent.fitness
+        old_best_agent_score = self.best_agent.fitness
         current_top_score = top_agents[0].fitness
 
-        if current_top_score > old_top_score:
+        if current_top_score > old_best_agent_score:
             self.best_agent = top_agents[0]
-            print(f'[i] Updated best agent. Previous/current best fitness: {old_top_score} / {current_top_score}')
+            print(f'[i] Updated best agent. Previous/current best agent score in this run: {old_best_agent_score} / {current_top_score}')
 
         return top_agents
         
@@ -153,7 +158,7 @@ class GeneticAlgorithm():
 
         Works by selecting a parent by coinflip, and picking the current gene from that parent, until all genes are picked.
         '''
-        elites = agents # Always include the top agents from the previous generation
+        elites = agents[:10] # Always include the top agents from the previous generation
         offspring = []
         
         # Each iteration will generate two children from two parents
@@ -162,9 +167,13 @@ class GeneticAlgorithm():
         random_indeces_1 = np.random.randint(0, len(agents), iterations_needed)
         random_indeces_2 = np.random.randint(0, len(agents), iterations_needed)
         for i in tqdm(range(iterations_needed)):
-            child1 = agents[random_indeces_1[i]]
-            child2 = agents[random_indeces_2[i]]
+            parent1 = agents[random_indeces_1[i]]
+            parent2 = agents[random_indeces_2[i]]
+            child1 = Agent(layers=layers)
+            child2 = Agent(layers=layers)
             
+            weight_shapes = [arr.shape for arr in parent1.neural_network.weights]
+
             bias_shapes = [arr.shape for arr in parent1.neural_network.biases]
 
             parent1_weight_genes = np.concatenate([arr.flatten() for arr in parent1.neural_network.weights])
@@ -285,17 +294,17 @@ class GeneticAlgorithm():
         
             
 LAYERS = [
-    [2 + 2 + 1 + 4, 100, ELU],
-    [None, 100, ELU],
-    [None, 100, ELU],
-    [None, 100, ELU],
-    [None, 50, ELU],
+    [2 + 2 + 1 + 4, 10, ELU],
+    [None, 10, ELU],
+    [None, 10, ELU],
+    [None, 5, ELU],
+    [None, 5, ELU],
     [None, 4, identity]
 ]
 
 POPULATION_SIZE = 1000
 
-NUM_GENERATIONS = 100
+NUM_GENERATIONS = 10
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
@@ -305,7 +314,7 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.05, p_mutation = 0.3, std_mutation=0.5)
+ga.execute(p_selection=0.1, p_mutation = 0.3, std_mutation=0.5)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
