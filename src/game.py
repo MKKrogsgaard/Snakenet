@@ -75,8 +75,8 @@ class Grid():
         self.positions = [[EMPTY_SQUARE_VAL for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
         self.apple_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
-        self.snake_head_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
-        self.snake_body_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.head_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.body_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
         apple_x, apple_y = apple.getGridPosition()
         self.positions[apple_x][apple_y] = APPLE_VAL
