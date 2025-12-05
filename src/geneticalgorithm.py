@@ -91,7 +91,7 @@ class Agent():
         self.final_distance_to_closest_wall = final_distance_to_closest_wall
         self.total_ticks_survived += self.ticks_without_eating
 
-        score = 5*self.apples_eaten + 0.01*self.total_ticks_survived - 2*self.mean_distance_to_apple
+        score = 2*self.apples_eaten + 0.01*self.total_ticks_survived - 1*self.mean_distance_to_apple
 
         self.fitness = score
         self.ticks_without_eating = 0
@@ -296,12 +296,12 @@ class GeneticAlgorithm():
 LAYERS = [
     [2 + 2 + 1 + 4, 100, ELU],
     [None, 100, ELU],
+    [None, 100, ELU],
     [None, 50, ELU],
-    [None, 5, ELU],
     [None, 4, sigmoid]
 ]
 
-POPULATION_SIZE = 100
+POPULATION_SIZE = 200
 
 NUM_GENERATIONS = 100
 
@@ -313,7 +313,7 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.3, std_mutation=0.5)
+ga.execute(p_selection=0.1, p_mutation = 0.3, std_mutation=1)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')
