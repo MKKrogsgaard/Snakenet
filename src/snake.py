@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 class Snake():
     # Constructor
-    def __init__(self, body_color, head_color, x_pos_initial, y_pos_initial, square_size, min_x, max_x, min_y, max_y):
+    def __init__(self, body_color, head_color, x_pos_initial, y_pos_initial, square_size, squares_per_side, min_x, max_x, min_y, max_y):
         self.body_color = body_color
         self.head_color = head_color
 
@@ -17,6 +17,8 @@ class Snake():
     
         self.score = 0
         self.square_size = square_size
+        self.squares_per_side = squares_per_side
+
         self.direction = 'RIGHT'
         
     
@@ -51,8 +53,11 @@ class Snake():
                 return True
         return False
     
-    def getHeadGridPosition(self):
+    def getHeadGridPosition(self, normalize=False):
         '''Returns the position of the head in grid coordinates.'''
+        if normalize:
+            return [int(self.position[0] / self.square_size) / self.squares_per_side, int(self.position[1] / self.square_size)  / self.squares_per_side]
+        
         return [int(self.position[0] / self.square_size), int(self.position[1] / self.square_size)]
         
     def getTailGridPositions(self):
@@ -62,11 +67,23 @@ class Snake():
             res.append([int(pos[0] / self.square_size), int(pos[1] / self.square_size)])
         return res
 
-    def getDistanceToApple(self, apple: Apple, normalize=False, square_size=None, squares_per_side=None):
+    def getDistanceToApple(self, apple: Apple, normalize=False):
         '''Returns the taxicab distance from the head of the snake to the apple.'''
         dist = abs(self.position[0] - apple.position[0]) + abs(self.position[1] - apple.position[1])
 
-        if normalize == True and square_size != None and squares_per_side != None:
-            dist = dist / (2*square_size*squares_per_side)
+        if normalize == True:
+            dist = dist / (2*self.square_size*self.squares_per_side)
 
         return dist 
+
+    def getDistanceToWalls(self, normalize=False):
+        left_wall_distance = (self.position[0] - self.xbounds[0])
+        right_wall_distance = (self.xbounds[1] - self.position[0])
+        bottom_wall_distance = (self.position[1] - self.ybounds[0])
+        top_wall_distance = (self.ybounds[1] - self.position[1])
+
+        if normalize:
+            return [left_wall_distance/(self.square_size * self.squares_per_side), right_wall_distance/(self.square_size * self.squares_per_side), top_wall_distance/(self.square_size * self.squares_per_side), bottom_wall_distance/(self.square_size * self.squares_per_side)]
+
+        return [left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance]
+

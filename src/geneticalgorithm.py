@@ -65,25 +65,32 @@ class Agent():
     def __init__(self, layers):
         self.neural_network = Network(layers=layers)
         self.fitness = 0
-        self.max_ticks = 1000
+        self.max_ticks_without_eating = 500
         self.tick_counter = 0
-        self.ticks_survived = 0
+        self.ticks_without_eating = 0
+        self.total_ticks_survived = 0
     
     def getFitness(self, game_fps, snake_moves_per_second):
         '''Makes the agent play a game of snake and returns the score.'''
-        self.iteration_counter = 0
+        self.tick_counter = 0
 
         self.game = Game(agent=self, game_fps=game_fps, snake_moves_per_second=snake_moves_per_second)
-        apples_eaten, distance_to_apple = self.game.startGame() # Score and taxicab distance to the apple when the agent died
+        apples_eaten, distance_to_apple, distance_to_closest_wall = self.game.startGame() # distance_to_apple is in taxicab distance
         
         self.apples_eaten = apples_eaten
         self.distance_to_apple = distance_to_apple
-        self.ticks_survived_at_eval = self.ticks_survived
+        self.distance_to_closest_wall = distance_to_closest_wall
+        self.total_ticks_survived += self.ticks_without_eating
 
-        score = 100*self.apples_eaten + 1*self.ticks_survived_at_eval - 10*self.distance_to_apple
+        if self.distance_to_closest_wall <= 0:
+            hitwallpunishment = -2
+        else:
+            hitwallpunishment = 0
+
+        score = 10*self.apples_eaten - 0.1*self.ticks_without_eating - 0.1*self.distance_to_apple + self.distance_to_closest_wall + hitwallpunishment
 
         self.fitness = score
-        self.ticks_survived = 0
+        self.ticks_without_eating = 0
         return score
 
 
@@ -263,23 +270,26 @@ class GeneticAlgorithm():
         end_time = time.time()
         total_time = end_time - start_time
         print(f'[+] Simulated {self.num_generations} generations of {self.population_size} Agents in {total_time:.2f} seconds at an average of {total_time/self.num_generations:.2f} seconds/generation.')
+
+        self.best_agent.game.saveGridRecordsToJSON(f'replays/gen-{self.num_generations}-best.json')
+
         self.best_agent.game.replay(self.snake_moves_per_second, title=f'Best agent of generation {self.num_generations}') # Replay the game from the best agent in the last generation
-        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.ticks_survived_at_eval} logical tick(s)\n  Died at a distance of {self.best_agent.distance_to_apple} from the apple')
+        print(f'The best agent of generation {self.num_generations}:\n  Ate {self.best_agent.apples_eaten} apple(s)\n  Survived for {self.best_agent.total_ticks_survived} logical tick(s)\n  Died at a distance of {self.best_agent.distance_to_apple} from the apple')
 
             
 LAYERS = [
-    [20*20 + 1, 1000, ReLU],
-    [None, 100, ReLU],
-    [None, 100, ReLU],
-    [None, 100, ReLU],
-    [None, 50, ReLU],
-    [None, 50, ReLU],
-    [None, 4, tanh]
+    [20*20, 1000, ReLU],
+    [None, 1000, sigmoid],
+    [None, 1000, ReLU],
+    [None, 1000, sigmoid],
+    [None, 500, ReLU],
+    [None, 250, sigmoid],
+    [None, 4, identity]
 ]
 
-POPULATION_SIZE = 1000
+POPULATION_SIZE = 2000
 
-NUM_GENERATIONS = 5
+NUM_GENERATIONS = 25
 
 ga = GeneticAlgorithm(
     layers=LAYERS,
@@ -289,7 +299,7 @@ ga = GeneticAlgorithm(
     snake_moves_per_second=7
 )
 
-ga.execute(p_selection=0.1, p_mutation = 0.05, std_mutation=1)
+ga.execute(p_selection=0.01, p_mutation = 0.3, std_mutation=1)
 
 data = np.array(ga.generation_stats)
 plt.title('Highest score for each generation')

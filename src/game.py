@@ -106,7 +106,8 @@ class Game():
             head_color=SNAKE_HEAD_COLOR, 
             x_pos_initial=X_POS_INITIAL, 
             y_pos_initial=Y_POS_INITIAL,
-            square_size=SQUARE_SIZE, 
+            square_size=SQUARE_SIZE,
+            squares_per_side=SQUARES_PER_SIDE,
             min_x=0, 
             max_x=WINDOW_SIZE - SQUARE_SIZE, 
             min_y=0, 
@@ -125,7 +126,6 @@ class Game():
             square_size=SQUARE_SIZE,
             squares_per_side=SQUARES_PER_SIDE
         )
-
 
     def showScore(self, score, color, font, font_size):
         score_font = pg.font.SysFont(font, font_size)
@@ -257,24 +257,32 @@ class Game():
                         self.temp_direction = 'LEFT'
                     elif event.key == pg.K_RIGHT:
                         self.temp_direction = 'RIGHT'
+        # Agent player
         else:
             agent_input = np.array(self.grid.positions)
             agent_input = agent_input.flatten()
 
-            apple_pos_x, apple_pos_y = self.apple.getGridPosition()
-            head_pos_x, head_pos_y = self.snake.getHeadGridPosition()
+            # apple_pos_x, apple_pos_y = self.apple.getGridPosition(normalize=True)
+            # head_pos_x, head_pos_y = self.snake.getHeadGridPosition(normalize=True)
 
-            agent_input = np.append(agent_input, apple_pos_x)
-            agent_input = np.append(agent_input, apple_pos_y)
-            agent_input = np.append(agent_input, head_pos_x)
-            agent_input = np.append(agent_input, head_pos_y)
+            # apple_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
+
+            # left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
+
+            # agent_input = np.append(agent_input, apple_pos_x)
+            # agent_input = np.append(agent_input, apple_pos_y)
+            # agent_input = np.append(agent_input, head_pos_x)
+            # agent_input = np.append(agent_input, head_pos_y)
+
+            # agent_input = np.append(agent_input, left_wall_distance)
+            # agent_input = np.append(agent_input, right_wall_distance)
+            # agent_input = np.append(agent_input, top_wall_distance)
+            # agent_input = np.append(agent_input, bottom_wall_distance)
 
             agent_output = self.agent.neural_network.forward(agent_input)
-            agent_output_softmaxed = softmax(agent_output)
+            agent_output_direction = np.argmax(agent_output)
 
-            agent_output_direction = np.random.choice([0, 1, 2, 3], p=agent_output_softmaxed)
-
-            # Press the key corresponding to the output neuron with the greatest activation
+            # Press the key corresponding to the chosen output neuron
             if agent_output_direction == 0:
                 self.temp_direction = 'UP'
             elif agent_output_direction == 1:
@@ -322,19 +330,19 @@ class Game():
             self.apple.respawn()
             if self.agent != None:
                 # Reset iterations counter
-                self.agent.iteration_counter = 0
+                self.agent.tick_counter = 0
         if self.agent == None:
             self.accumulated_time -= self.logic_time_interval
 
     def startGame(self):
-        # If a human is playing
+        # Human loop
         if self.agent == None:
             # Pygame setup, returns a tuple with the number of successfull and failed inits
             n_successful, n_errors  = pg.init()
             if n_errors > 0:
                 print(f'[!] Encountered {n_errors} error(s) when initializing the game, aborting...')
             else:
-                print('[+] Game initialized successfully!')
+                print('[+] Game1 initialized successfully!')
 
             self.screen = pg.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
             pg.display.set_caption('Snake')
@@ -349,7 +357,7 @@ class Game():
         if self.agent != None:
             while self.game_is_running:
                 # Prevents agents from running in circles to stave off their inevitable doom
-                if self.agent.tick_counter > self.agent.max_ticks:
+                if self.agent.tick_counter > self.agent.max_ticks_without_eating:
                     self.gameOver(
                         score=self.snake.score,
                         color=GAME_OVER_TEXT_COLOR,
@@ -366,7 +374,7 @@ class Game():
                     break
             
                 self.agent.tick_counter += 1
-                self.agent.ticks_survived += 1
+                self.agent.ticks_without_eating += 1
 
         # Human loop
         else:
@@ -389,8 +397,15 @@ class Game():
         pg.quit()
 
         final_score = self.snake.score
-        final_distance_to_apple = self.snake.getDistanceToApple(self.apple)
+        final_distance_to_apple = self.snake.getDistanceToApple(self.apple, normalize=True)
+        final_distance_to_closest_wall = min(self.snake.getDistanceToWalls(normalize=True))
 
-        return final_score, final_distance_to_apple
+        return final_score, final_distance_to_apple, final_distance_to_closest_wall
 
+# game = Game(
+#     game_fps=GAME_FPS,
+#     snake_moves_per_second=SNAKE_MOVES_PER_SECOND,
+#     agent=None
+# )
 
+# game.startGame()
