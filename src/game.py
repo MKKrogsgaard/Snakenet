@@ -59,9 +59,7 @@ EMPTY_SQUARE_VAL = 0
 
 class Grid():
     '''
-    Keeps track of the positions of objects in the game grid via the attribute 'position'.
-    
-    position[i][j] is the object that currently occupies the square at grid coordinate (i, j).
+    Keeps track of the positions of objects in the game grid.
     '''
     def __init__(self, squares_per_side, square_size):
         self.squares_per_side = squares_per_side
@@ -69,19 +67,30 @@ class Grid():
         
         self.positions = [[EMPTY_SQUARE_VAL for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
+        self.apple_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.head_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.body_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+
     def update(self, snake=Snake, apple=Apple):
         self.positions = [[EMPTY_SQUARE_VAL for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
+        self.apple_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.snake_head_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+        self.snake_body_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
+
         apple_x, apple_y = apple.getGridPosition()
         self.positions[apple_x][apple_y] = APPLE_VAL
+        self.apple_channel[apple_x][apple_y] = 1
 
         head_x, head_y = snake.getHeadGridPosition()
         self.positions[head_x][head_y] = HEAD_VAL
+        self.head_channel[head_x][head_y] = 1
         
         tailpositions = snake.getTailGridPositions()
         for pos in tailpositions:
             pos_x, pos_y = pos
             self.positions[pos_x][pos_y] = BODY_VAL
+            self.body_channel[pos_x][pos_y] = 1
 
     def printGrid(self):
         temp_str = ""
@@ -213,7 +222,6 @@ class Game():
         for grid_state in self.grid_records:
             self.render(grid_state[0], grid_state[1])
             self.clock.tick(fps)
-        time.sleep(3)
 
     def saveGridRecordsToJSON(self, filepath):
         '''Saves a json representation of self.grid_records to filepath.'''
@@ -259,25 +267,33 @@ class Game():
                         self.temp_direction = 'RIGHT'
         # Agent player
         else:
-            agent_input = np.array(self.grid.positions)
-            agent_input = agent_input.flatten()
+            apple_channel = np.array(self.grid.apple_channel).flatten()
+            head_channel = np.array(self.grid.head_channel).flatten()
+            body_channel = np.array(self.grid.body_channel).flatten()
 
-            # apple_pos_x, apple_pos_y = self.apple.getGridPosition(normalize=True)
-            # head_pos_x, head_pos_y = self.snake.getHeadGridPosition(normalize=True)
+            agent_input = np.array([])
+            # agent_input = np.append(agent_input, apple_channel)
+            # agent_input = np.append(agent_input, head_channel)
+            # agent_input = np.append(agent_input, body_channel)
 
-            # apple_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
+            apple_pos_x, apple_pos_y = self.apple.getGridPosition(normalize=True)
+            head_pos_x, head_pos_y = self.snake.getHeadGridPosition(normalize=True)
 
-            # left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
+            apple_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
 
-            # agent_input = np.append(agent_input, apple_pos_x)
-            # agent_input = np.append(agent_input, apple_pos_y)
-            # agent_input = np.append(agent_input, head_pos_x)
-            # agent_input = np.append(agent_input, head_pos_y)
+            left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
 
-            # agent_input = np.append(agent_input, left_wall_distance)
-            # agent_input = np.append(agent_input, right_wall_distance)
-            # agent_input = np.append(agent_input, top_wall_distance)
-            # agent_input = np.append(agent_input, bottom_wall_distance)
+            agent_input = np.append(agent_input, apple_pos_x)
+            agent_input = np.append(agent_input, apple_pos_y)
+            agent_input = np.append(agent_input, head_pos_x)
+            agent_input = np.append(agent_input, head_pos_y)
+
+            agent_input = np.append(agent_input, apple_distance)
+
+            agent_input = np.append(agent_input, left_wall_distance)
+            agent_input = np.append(agent_input, right_wall_distance)
+            agent_input = np.append(agent_input, top_wall_distance)
+            agent_input = np.append(agent_input, bottom_wall_distance)
 
             agent_output = self.agent.neural_network.forward(agent_input)
             agent_output_direction = np.argmax(agent_output)
@@ -402,10 +418,13 @@ class Game():
 
         return final_score, final_distance_to_apple, final_distance_to_closest_wall
 
-# game = Game(
-#     game_fps=GAME_FPS,
-#     snake_moves_per_second=SNAKE_MOVES_PER_SECOND,
-#     agent=None
-# )
+game = Game(
+    game_fps=GAME_FPS,
+    snake_moves_per_second=SNAKE_MOVES_PER_SECOND,
+    agent=None
+)
 
 # game.startGame()
+
+# game.loadGridRecordsFromJSON('replays/best-agent.json')
+# game.replay(snake_moves_per_second=SNAKE_MOVES_PER_SECOND, title='Best snake replay')
