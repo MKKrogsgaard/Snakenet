@@ -8,6 +8,8 @@ import random
 import pygame as pg
 import time
 import numpy as np
+import os
+import json
 
 from snake import Snake
 from apple import Apple
@@ -184,6 +186,17 @@ class Game():
         pg.display.update()
 
     def replay(self, snake_moves_per_second, title='Snake replay'):
+        '''
+        Replays the game associated with this Game instance, using the grid records.
+        
+        Replays the game with the fps needed to achieve snake_moves_per_second snake moves per second.
+        
+        self.grid_records must be set and must be a list of grid position states.
+        '''
+        if self.grid_records == None or len(self.grid_records) == 0:
+            print('[!] Game.replay(): self.grid_records must exist!')
+            return
+
         # Pygame setup, returns a tuple with the number of successfull and failed inits
         n_successful, n_errors  = pg.init()
         if n_errors > 0:
@@ -191,7 +204,7 @@ class Game():
         else:
             print('[+] Replay initialized successfully!')
 
-        fps = snake_moves_per_second # FPS should match how fast the snake moved
+        fps = snake_moves_per_second # FPS should match how fast the snake moved in the game
 
         self.screen = pg.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
         pg.display.set_caption(title)
@@ -201,7 +214,32 @@ class Game():
             self.render(grid_state[0], grid_state[1])
             self.clock.tick(fps)
         time.sleep(3)
-        
+
+    def saveGridRecordsToJSON(self, filepath):
+        '''Saves a json representation of self.grid_records to filepath.'''
+        # Ensures target directory exists
+        save_dir = os.path.dirname(filepath)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+
+        try:
+            with open(filepath, "w") as file:
+                json.dump(self.grid_records, file)
+            print(f'[+] Saved grid_records to {filepath}')
+            return
+        except Exception as e:
+            print(f'[!] Failed to save grid_records: {e}')
+
+    def loadGridRecordsFromJSON(self, filepath):
+        '''Loads grid_records from filepath and sets self.grid_records to the loaded records.'''
+        try:
+            with open(filepath) as file:
+                data = json.load(file)
+                self.grid_records = data
+                print(f'[+] Loaded grid_records from {filepath}')
+                return
+        except Exception as e:
+            print(f'[!] Failed to load grid_records: {e}')
 
     def processInput(self):
         if self.agent == None:
@@ -222,7 +260,14 @@ class Game():
         else:
             agent_input = np.array(self.grid.positions)
             agent_input = agent_input.flatten()
-            agent_input = np.append(agent_input, self.snake.getDistanceToApple(self.apple, normalize=True, square_size=SQUARE_SIZE, squares_per_side=SQUARES_PER_SIDE))
+
+            apple_pos_x, apple_pos_y = self.apple.getGridPosition()
+            head_pos_x, head_pos_y = self.snake.getHeadGridPosition()
+
+            agent_input = np.append(agent_input, apple_pos_x)
+            agent_input = np.append(agent_input, apple_pos_y)
+            agent_input = np.append(agent_input, head_pos_x)
+            agent_input = np.append(agent_input, head_pos_y)
 
             agent_output = self.agent.neural_network.forward(agent_input)
             agent_output_softmaxed = softmax(agent_output)
@@ -348,13 +393,4 @@ class Game():
 
         return final_score, final_distance_to_apple
 
-# game = Game(
-#     agent=None,
-#     game_fps=GAME_FPS,
-#     snake_moves_per_second=SNAKE_MOVES_PER_SECOND
-#     )
-
-# final_score, distance_to_apple = game.startGame()
-
-# game.replay(snake_moves_per_second=SNAKE_MOVES_PER_SECOND)
 
