@@ -133,7 +133,7 @@ class Agent():
         self.mean_distance_to_apple = mean_distance_to_apple
         self.final_distance_to_closest_wall = final_distance_to_closest_wall
 
-        score = 10*self.apples_eaten + 0.01*self.total_ticks_survived - 10*self.mean_distance_to_apple
+        score = 100*self.apples_eaten + 0.01*self.total_ticks_survived - self.mean_distance_to_apple
 
         self.fitness = score
         self.ticks_without_eating = 0
@@ -195,7 +195,7 @@ class GeneticAlgorithm():
             print(f'[!] GeneticAlgorithm.selectAgents(): p cannot be greater than 1. Setting p=1.')
             p = 1
         
-        scores = self.getAgentFitnessScores(agents=agents, num_repeats_per_agent=10)
+        scores = self.getAgentFitnessScores(agents=agents, num_repeats_per_agent=100)
 
         agent_score_pairs = zip(agents, scores)
 
@@ -330,7 +330,7 @@ class GeneticAlgorithm():
         self.best_agent = self.agents[0]
 
         self.best_historical_score = 0
-        for i in range(self.num_generations):
+        for i in tqdm(range(self.num_generations)):
             print(f'[+] Current generation: {i + 1}')
             print('Selecting agents...')
             elites = self.selectAgents(agents=self.agents, p=p_selection)
@@ -340,9 +340,9 @@ class GeneticAlgorithm():
 
             # If the highest score from this generation exceeds the highest all-time score, play the replay
             self.generation_stats.append([i + 1, highest_current_score])
-            if self.best_historical_score < highest_current_score:
-                self.best_agent.game.loadGridRecordsFromJSON(f'replays/best-agent.json')
-                self.best_agent.game.replay(snake_moves_per_second=self.snake_moves_per_second, title=f'Current best snake (generation {i + 1})')
+            # if self.best_historical_score < highest_current_score:
+            #     self.best_agent.game.loadGridRecordsFromJSON(f'replays/best-agent.json')
+            #     self.best_agent.game.replay(snake_moves_per_second=self.snake_moves_per_second, title=f'Current best snake (generation {i + 1})')
 
             print('Performing crossover...')
             offspring = self.crossover(agents=elites, layers=self.layers, population_size=self.population_size)
@@ -355,8 +355,6 @@ class GeneticAlgorithm():
             self.agents = new_population
 
             
-
-
         end_time = time.time()
         total_time = end_time - start_time
         print(f'[+] Simulated {self.num_generations} generations of {self.population_size} Agents in {total_time:.2f} seconds at an average of {total_time/self.num_generations:.2f} seconds/generation.')

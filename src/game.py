@@ -360,9 +360,11 @@ class Game():
             self.snake.score += 1
             self.snake.grow()
             self.apple.respawn()
+
             if self.agent != None:
-                # Reset iterations counter
                 self.agent.ticks_without_eating = 0
+        
+        # Human player: decrement the time delta by the time dedicated to this tick
         if self.agent == None:
             self.accumulated_time -= self.logic_time_interval
 
@@ -435,13 +437,3 @@ class Game():
 
         return final_score, final_distance_to_apple, final_distance_to_closest_wall, mean_distance_to_apple
 
-game = Game(
-    game_fps=GAME_FPS,
-    snake_moves_per_second=SNAKE_MOVES_PER_SECOND,
-    agent=None
-)
-
-# game.startGame()
-
-# game.loadGridRecordsFromJSON('replays/best-agent.json')
-# game.replay(snake_moves_per_second=SNAKE_MOVES_PER_SECOND, title='Best snake replay')
