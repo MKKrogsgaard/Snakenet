@@ -83,16 +83,22 @@ class Grid():
         self.body_channel = [[0 for i in range(self.squares_per_side)] for i in range(self.squares_per_side)]
 
         apple_x, apple_y = apple.getGridPosition()
+        if not (0 <= apple_x < self.squares_per_side and 0 <= apple_y < self.squares_per_side):
+            raise IndexError(f'Apple grid position out of bounds: {(apple_x, apple_y)} (grid size {self.squares_per_side})')
         self.positions[apple_x][apple_y] = APPLE_VAL
         self.apple_channel[apple_x][apple_y] = 1
 
         head_x, head_y = snake.getHeadGridPosition()
+        if not (0 <= head_x < self.squares_per_side and 0 <= head_y < self.squares_per_side):
+            raise IndexError(f'Head grid position out of bounds: {(head_x, head_y)} (grid size {self.squares_per_side})')
         self.positions[head_x][head_y] = HEAD_VAL
         self.head_channel[head_x][head_y] = 1
         
         tailpositions = snake.getTailGridPositions()
         for pos in tailpositions:
             pos_x, pos_y = pos
+            if not (0 <= pos_x < self.squares_per_side and 0 <= pos_y < self.squares_per_side):
+                raise IndexError(f'Tail piece grid position out of bounds: {(pos_x, pos_y)} (grid size {self.squares_per_side})')
             self.positions[pos_x][pos_y] = BODY_VAL
             self.body_channel[pos_x][pos_y] = 1
 
@@ -253,6 +259,10 @@ class Game():
         except Exception as e:
             print(f'[!] Failed to save grid_records: {e}')
 
+    def loadGridRecordsFromList(self, grid_records):
+        '''Takes in a set of grid_records in the form of a grid_records object, and sets self.grid_records to that object.'''
+        self.grid_records = grid_records
+
     def loadGridRecordsFromJSON(self, filepath):
         '''Loads grid_records from filepath and sets self.grid_records to the loaded records.'''
         try:
@@ -294,7 +304,7 @@ class Game():
             apple_pos_x, apple_pos_y = self.apple.getGridPosition(normalize=True)
             head_pos_x, head_pos_y = self.snake.getHeadGridPosition(normalize=True)
 
-            apple_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
+            apple_total_distance, apple_x_distance, apple_y_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
 
             left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
 
@@ -303,7 +313,8 @@ class Game():
             agent_input = np.append(agent_input, head_pos_x)
             agent_input = np.append(agent_input, head_pos_y)
 
-            agent_input = np.append(agent_input, apple_distance)
+            agent_input = np.append(agent_input, apple_x_distance)
+            agent_input = np.append(agent_input, apple_y_distance)
 
             agent_input = np.append(agent_input, left_wall_distance)
             agent_input = np.append(agent_input, right_wall_distance)
@@ -335,8 +346,11 @@ class Game():
         elif self.temp_direction == 'RIGHT' and self.snake.direction != 'LEFT':
             self.snake.direction = 'RIGHT'
 
+        self.temp_direction = self.snake.direction
+
         self.snake.move()
-        self.snake_distance_to_apple_record.append(self.snake.getDistanceToApple(apple=self.apple, normalize=True))
+        apple_total_distance, apple_x_distance, apple_y_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
+        self.snake_distance_to_apple_record.append(apple_total_distance)
 
         if self.snake.isOutOfBounds():
             self.gameOver(
@@ -368,7 +382,12 @@ class Game():
         if self.agent == None:
             self.accumulated_time -= self.logic_time_interval
 
-    def startGame(self):
+    def playGame(self):
+        '''
+        Starts the game.
+
+        Returns: final_score, total_ticks_survived, time_averaged_distance_to_apple, final_distance_to_apple, final_distance_to_closest_wall, grid_records
+        '''
         # Human loop
         if self.agent == None:
             # Pygame setup, returns a tuple with the number of successfull and failed inits
@@ -389,6 +408,7 @@ class Game():
 
         # Agent loop
         if self.agent != None:
+            self.agent.ticks_without_eating = 0
             while self.game_is_running:
                 # Prevents agents from running in circles to stave off their inevitable doom
                 if self.agent.ticks_without_eating > self.agent.max_ticks_without_eating:
@@ -399,19 +419,21 @@ class Game():
                         font_size=GAME_OVER_FONT_SIZE,
                         message='Too many iterations! Final score: '
                     )
-                
-                self.grid.update(self.snake, self.apple)
                 self.processInput()
                 self.update()
-                self.grid_records.append([self.grid.positions, self.snake.score])
+                # This should always be immediatly after update, otherwise you might get an out-of-range error when the grid tries to update after the snake is out of bounds
                 if not self.game_is_running:
                     break
+
+                self.grid.update(self.snake, self.apple)
+                self.grid_records.append([self.grid.positions, self.snake.score])
+                
                 
                 self.agent.ticks_without_eating += 1
                 self.agent.total_ticks_survived += 1
 
         # Human loop
-        else:
+        elif self.agent == None:
             while self.game_is_running:
                 deltaTime = self.clock.tick(self.game_fps) / 1000 # In seconds
                 self.accumulated_time += deltaTime
@@ -421,19 +443,24 @@ class Game():
                 # Process input every frame, but update movement and render for every logical tick
                 self.processInput()
                 while self.accumulated_time >= self.logic_time_interval:
-                    self.grid.update(self.snake, self.apple)
                     self.update()
-                    self.grid_records.append([self.grid.positions, self.snake.score])
-                    self.render(self.grid.positions, self.snake.score)
+                    # This should always be immediatly after update, otherwise you might get an out-of-range error when the grid tries to update after the snake is out of bounds
                     if not self.game_is_running:
                         break
+
+                    self.grid.update(self.snake, self.apple)
+                    self.grid_records.append([self.grid.positions, self.snake.score])
+                    self.render(self.grid.positions, self.snake.score)
+                    
                 
         pg.quit()
 
         final_score = self.snake.score
         final_distance_to_apple = self.snake.getDistanceToApple(self.apple, normalize=True)
         final_distance_to_closest_wall = min(self.snake.getDistanceToWalls(normalize=True))
-        mean_distance_to_apple = np.mean(self.snake_distance_to_apple_record)
+        time_averaged_distance_to_apple = np.mean(self.snake_distance_to_apple_record)
+        total_ticks_survived = self.agent.total_ticks_survived
+        grid_records = self.grid_records
 
-        return final_score, final_distance_to_apple, final_distance_to_closest_wall, mean_distance_to_apple
+        return final_score, total_ticks_survived, time_averaged_distance_to_apple, final_distance_to_apple, final_distance_to_closest_wall, grid_records
 

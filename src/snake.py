@@ -24,9 +24,11 @@ class Snake():
     
     def move(self):
         '''Moves the snake in the direction it is currently facing.'''
-        if len(self.tail) >= 1:
-            self.tail.append((self.position[0], self.position[1]))
-            self.tail.pop(0)
+        # Don't append a piece to the tail if the current position is out of bounds!
+        if not self.isOutOfBounds():
+            if len(self.tail) >= 1:
+                self.tail.append((self.position[0], self.position[1]))
+                self.tail.pop(0)
 
         if self.direction == 'UP':
             self.position[1] -= self.square_size
@@ -42,10 +44,10 @@ class Snake():
         self.tail.append((self.position[0], self.position[1]))
 
     def isOutOfBounds(self):
-        if not(self.xbounds[0] <= self.position[0] <= self.xbounds[1] and self.ybounds[0] <= self.position[1] <= self.ybounds[1]):
-            return True
-        else:
+        if (self.xbounds[0] <= self.position[0] <= self.xbounds[1]) and (self.ybounds[0] <= self.position[1] <= self.ybounds[1]):
             return False
+        else:
+            return True
         
     def isBitingTail(self):
         for pos in self.tail:
@@ -56,7 +58,7 @@ class Snake():
     def getHeadGridPosition(self, normalize=False):
         '''Returns the position of the head in grid coordinates.'''
         if normalize:
-            return [int(self.position[0] / self.square_size) / self.squares_per_side, int(self.position[1] / self.square_size)  / self.squares_per_side]
+            return [int(self.position[0] / self.square_size*self.squares_per_side), int(self.position[1] / self.square_size*self.squares_per_side)]
         
         return [int(self.position[0] / self.square_size), int(self.position[1] / self.square_size)]
         
@@ -68,13 +70,20 @@ class Snake():
         return res
 
     def getDistanceToApple(self, apple: Apple, normalize=False):
-        '''Returns the taxicab distance from the head of the snake to the apple.'''
-        dist = abs(self.position[0] - apple.position[0]) + abs(self.position[1] - apple.position[1])
+        '''
+        Returns the taxicab distance from the head of the snake to the apple, as well as x and y distance.
+        '''
+        x_distance = self.position[0] - apple.position[0]
+        y_distance = self.position[1] - apple.position[1]
+
+        total_distance = abs(self.position[0] - apple.position[0]) + abs(self.position[1] - apple.position[1])
 
         if normalize == True:
-            dist = dist / (2*self.square_size*self.squares_per_side)
+            x_distance = x_distance / (self.square_size*self.squares_per_side)
+            y_distance = y_distance / (self.square_size*self.squares_per_side)
+            total_distance = total_distance / (2*self.square_size*self.squares_per_side)
 
-        return dist 
+        return total_distance, x_distance, y_distance
 
     def getDistanceToWalls(self, normalize=False):
         left_wall_distance = (self.position[0] - self.xbounds[0])
