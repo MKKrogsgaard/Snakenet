@@ -28,9 +28,9 @@ def identity(x):
     '''Returns x'''
     return x
 
-def calculateFitness(apples_eaten, total_ticks_survived, time_averaged_distance_to_apple):
+def calculateFitness(apples_eaten, total_ticks_survived, time_averaged_distance_to_apple, intermediate_score):
     '''Modify this to change how the fitness of an agent is calculated.'''
-    fitness = 10*apples_eaten + 0.001*total_ticks_survived
+    fitness = 0.01*total_ticks_survived + intermediate_score
     return fitness
 
 
@@ -79,6 +79,7 @@ def task_evaluateGenome(task):
     apples_eaten_results = []
     ticks_survived_results = []
     time_averaged_distance_to_apple_results = []
+    intermediate_score_results = []
     best_fitness = 0
     best_grid_records = None
     for i in range(num_repeats_per_agent):
@@ -88,7 +89,10 @@ def task_evaluateGenome(task):
         ticks_survived_results.append(total_ticks_survived)
         time_averaged_distance_to_apple_results.append(time_averaged_distance_to_apple)
 
-        temp_fitness = calculateFitness(apples_eaten, total_ticks_survived, time_averaged_distance_to_apple)
+        intermediate_score = agent.intermediate_score
+        intermediate_score_results.append(intermediate_score)
+
+        temp_fitness = calculateFitness(apples_eaten, total_ticks_survived, time_averaged_distance_to_apple, intermediate_score)
 
         if temp_fitness > best_fitness:
             best_fitness = temp_fitness
@@ -97,8 +101,9 @@ def task_evaluateGenome(task):
     mean_apples_eaten = np.mean(apples_eaten_results)
     mean_ticks_survived = np.mean(ticks_survived_results)
     mean_distance_to_apple = np.mean(time_averaged_distance_to_apple_results)
+    mean_intermediate_score = np.mean(intermediate_score_results)
 
-    fitness = calculateFitness(mean_apples_eaten, mean_ticks_survived, mean_distance_to_apple)
+    fitness = calculateFitness(mean_apples_eaten, mean_ticks_survived, mean_distance_to_apple, mean_intermediate_score)
 
     return fitness, best_fitness, mean_ticks_survived, best_grid_records
 
@@ -142,6 +147,9 @@ class Agent():
         self.ticks_without_eating = 0
         self.total_ticks_survived = 0
 
+        self.intermediate_score = 0
+        self.previous_distance_to_apple = 10**10
+
         self.mean_ticks_survived = 0
         self.best_score = 0
         self.best_grid_records = 0
@@ -172,7 +180,7 @@ class GeneticAlgorithm():
             pass
 
         # Set number of workers to available CPU cores (minus some number for the OS)
-        max_workers = max(1, os.cpu_count() - 10)
+        max_workers = max(1, os.cpu_count() - 1)
 
         tasks = []
         for agent in agents:

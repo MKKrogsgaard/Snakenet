@@ -352,7 +352,15 @@ class Game():
         apple_total_distance, apple_x_distance, apple_y_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
         self.snake_distance_to_apple_record.append(apple_total_distance)
 
+        if apple_total_distance < self.agent.previous_distance_to_apple:
+            self.agent.intermediate_score += 1
+        else:
+            self.agent.intermediate_score -= 2
+
+        self.agent.previous_distance_to_apple = apple_total_distance
+
         if self.snake.isOutOfBounds():
+            self.agent.intermediate_score -= 5
             self.gameOver(
                 score=self.snake.score,
                 color=GAME_OVER_TEXT_COLOR,
@@ -371,6 +379,8 @@ class Game():
             )
 
         if self.snake.position == self.apple.position:
+            self.agent.previous_distance_to_apple = 10**10
+            self.agent.intermediate_score += 10
             self.snake.score += 1
             self.snake.grow()
             self.apple.respawn()
@@ -409,6 +419,7 @@ class Game():
         # Agent loop
         if self.agent != None:
             self.agent.ticks_without_eating = 0
+            self.agent.previous_distance_to_apple = 10**10
             while self.game_is_running:
                 # Prevents agents from running in circles to stave off their inevitable doom
                 if self.agent.ticks_without_eating > self.agent.max_ticks_without_eating:
