@@ -259,54 +259,48 @@ class GeneticAlgorithm():
             parent1_bias_genes = np.concatenate([arr.flatten() for arr in parent1.neural_network.biases])
             parent2_bias_genes = np.concatenate([arr.flatten() for arr in parent2.neural_network.biases])
 
-            # length_of_weights = len(parent1_weight_genes)
-            # length_of_biases = len(parent1_bias_genes)
+            length_of_weights = len(parent1_weight_genes)
+            length_of_biases = len(parent1_bias_genes)
 
-            # child1_weight_genes = np.zeros(length_of_weights)
-            # child2_weight_genes = np.zeros(length_of_weights)
+            child1_weight_genes = np.zeros(length_of_weights)
+            child2_weight_genes = np.zeros(length_of_weights)
 
-            # child1_bias_genes = np.zeros(length_of_biases)
-            # child2_bias_genes = np.zeros(length_of_biases)
+            child1_bias_genes = np.zeros(length_of_biases)
+            child2_bias_genes = np.zeros(length_of_biases)
 
-            # weight1_coinflips = np.random.randint(0, 2, size=length_of_weights)
-            # weight2_coinflips = np.random.randint(0, 2, size=length_of_weights)
+            weight1_coinflips = np.random.randint(0, 2, size=length_of_weights)
+            weight2_coinflips = np.random.randint(0, 2, size=length_of_weights)
 
-            # for j in range(length_of_weights):
-            #     if weight1_coinflips[j] == 0:
-            #         child1_weight_genes[j] = parent1_weight_genes[j]
-            #     else:
-            #         child1_weight_genes[j] = parent2_weight_genes[j]
+            for j in range(length_of_weights):
+                if weight1_coinflips[j] == 0:
+                    child1_weight_genes[j] = parent1_weight_genes[j]
+                else:
+                    child1_weight_genes[j] = parent2_weight_genes[j]
 
-            #     if weight2_coinflips[j] == 0:
-            #         child2_weight_genes[j] = parent1_weight_genes[j]
-            #     else:
-            #         child2_weight_genes[j] = parent2_weight_genes[j]
+                if weight2_coinflips[j] == 0:
+                    child2_weight_genes[j] = parent1_weight_genes[j]
+                else:
+                    child2_weight_genes[j] = parent2_weight_genes[j]
 
-            # bias1_coinflips = np.random.randint(0, 2, size=length_of_biases)
-            # bias2_coinflips = np.random.randint(0, 2, size=length_of_biases)
+            bias1_coinflips = np.random.randint(0, 2, size=length_of_biases)
+            bias2_coinflips = np.random.randint(0, 2, size=length_of_biases)
 
-            # for j in range(length_of_biases):
-            #     if bias1_coinflips[j] == 0:
-            #         child1_bias_genes[j] = parent1_bias_genes[j]
-            #     else:
-            #         child1_bias_genes[j] = parent2_bias_genes[j]
+            for j in range(length_of_biases):
+                if bias1_coinflips[j] == 0:
+                    child1_bias_genes[j] = parent1_bias_genes[j]
+                else:
+                    child1_bias_genes[j] = parent2_bias_genes[j]
                 
-            #     if bias2_coinflips[j] == 0:
-            #         child2_bias_genes[j] = parent1_bias_genes[j]
-            #     else:
-            #         child2_bias_genes[j] = parent2_bias_genes[j]
+                if bias2_coinflips[j] == 0:
+                    child2_bias_genes[j] = parent1_bias_genes[j]
+                else:
+                    child2_bias_genes[j] = parent2_bias_genes[j]
 
-            # child1.neural_network.weights = unflatten(child1_weight_genes, weight_shapes)
-            # child2.neural_network.weights = unflatten(child2_weight_genes, weight_shapes)
+            child1.neural_network.weights = unflatten(child1_weight_genes, weight_shapes)
+            child2.neural_network.weights = unflatten(child2_weight_genes, weight_shapes)
 
-            # child1.neural_network.biases = unflatten(child1_bias_genes, bias_shapes)
-            # child2.neural_network.biases = unflatten(child2_bias_genes, bias_shapes)
-
-            child1.neural_network.weights = unflatten(parent1_weight_genes, weight_shapes)
-            child2.neural_network.weights = unflatten(parent2_weight_genes, weight_shapes)
-
-            child1.neural_network.biases = unflatten(parent1_bias_genes, bias_shapes)
-            child2.neural_network.biases = unflatten(parent2_bias_genes, bias_shapes)
+            child1.neural_network.biases = unflatten(child1_bias_genes, bias_shapes)
+            child2.neural_network.biases = unflatten(child2_bias_genes, bias_shapes)
 
             offspring.append(child1)
             offspring.append(child2)
@@ -352,12 +346,16 @@ class GeneticAlgorithm():
             # Best agent of this generation
             best_agent = elites[0]
             best_agent_grid_records = best_agent.best_grid_records
+            if len(self.generation_stats) >= 1 and (best_agent.fitness > np.max(np.array(self.generation_stats)[:, 1])):
+                print(f'[+] Fitness of best agent in generation {i + 1}: {best_agent.fitness} (New record!)')
+            else:
+                print(f'[+] Fitness of best agent in generation {i + 1}: {best_agent.fitness}')
             self.generation_stats.append([i+1, best_agent.fitness, best_agent.mean_ticks_survived])
-            print(f'[+] Fitness of best agent in generation {i + 1}: {best_agent.fitness}')
+
             # Save the replay
             replayer = Game(agent=best_agent, game_fps=self.game_fps, snake_moves_per_second=self.snake_moves_per_second)
             replayer.loadGridRecordsFromList(best_agent_grid_records)
-            replayer.saveGridRecordsToJSON('replays/best-agent-replay.json')
+            replayer.saveGridRecordsToJSON('replays/most-recent-agent-replay.json')
 
             print('Performing crossover...')
             offspring = self.crossover(agents=elites, layers=self.layers, population_size=self.population_size)

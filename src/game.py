@@ -26,7 +26,7 @@ def softmax(arr):
 # Resolution
 WINDOW_SIZE = 500
 
-SQUARES_PER_SIDE = 20 # Grid dimensions will be SQUARES_PER_SIDE^2
+SQUARES_PER_SIDE = 10 # Grid dimensions will be SQUARES_PER_SIDE^2
 SQUARE_SIZE = WINDOW_SIZE / SQUARES_PER_SIDE
 
 # FPS and game speed
@@ -243,6 +243,8 @@ class Game():
                     i = len(self.grid_records)
 
             i += 1
+            
+        time.sleep(3)
 
     def saveGridRecordsToJSON(self, filepath):
         '''Saves a json representation of self.grid_records to filepath.'''
@@ -292,26 +294,11 @@ class Game():
                         self.temp_direction = 'RIGHT'
         # Agent player
         else:
-            apple_channel = np.array(self.grid.apple_channel).flatten()
-            head_channel = np.array(self.grid.head_channel).flatten()
-            body_channel = np.array(self.grid.body_channel).flatten()
-
             agent_input = np.array([])
-            # agent_input = np.append(agent_input, apple_channel)
-            # agent_input = np.append(agent_input, head_channel)
-            # agent_input = np.append(agent_input, body_channel)
-
-            apple_pos_x, apple_pos_y = self.apple.getGridPosition(normalize=True)
-            head_pos_x, head_pos_y = self.snake.getHeadGridPosition(normalize=True)
 
             apple_total_distance, apple_x_distance, apple_y_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
 
             left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
-
-            agent_input = np.append(agent_input, apple_pos_x)
-            agent_input = np.append(agent_input, apple_pos_y)
-            agent_input = np.append(agent_input, head_pos_x)
-            agent_input = np.append(agent_input, head_pos_y)
 
             agent_input = np.append(agent_input, apple_x_distance)
             agent_input = np.append(agent_input, apple_y_distance)
@@ -353,14 +340,13 @@ class Game():
         self.snake_distance_to_apple_record.append(apple_total_distance)
 
         if apple_total_distance < self.agent.previous_distance_to_apple:
-            self.agent.intermediate_score += 1
+            self.agent.intermediate_score += 0.01
         else:
-            self.agent.intermediate_score -= 2
+            self.agent.intermediate_score -= 0.02
 
         self.agent.previous_distance_to_apple = apple_total_distance
 
         if self.snake.isOutOfBounds():
-            self.agent.intermediate_score -= 5
             self.gameOver(
                 score=self.snake.score,
                 color=GAME_OVER_TEXT_COLOR,
@@ -380,7 +366,7 @@ class Game():
 
         if self.snake.position == self.apple.position:
             self.agent.previous_distance_to_apple = 10**10
-            self.agent.intermediate_score += 10
+            self.agent.intermediate_score += 1
             self.snake.score += 1
             self.snake.grow()
             self.apple.respawn()

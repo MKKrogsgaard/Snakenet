@@ -4,29 +4,31 @@ import matplotlib.pyplot as plt
 from geneticalgorithm import *
 from game import *
 
-def moving_average(a, n=3):
+def moving_average(x, n=3):
     kernel = np.ones(n) / n
-    return np.convolve(a, kernel, mode='same')
+    res = np.convolve(x, kernel, mode='same')
+    res[-n:] = x[-n:]
+    return res
 
 
 LAYERS = [
-    [4 + 2 + 4, 16, ELU],
-    [None, 16, ELU],
-    [None, 16, ELU],
+    [2 + 4, 10, identity],
+    [None, 10, ELU],
+    [None, 10, ELU],
     [None, 4, identity]
 ]
 
 if __name__ == '__main__':
     ga = GeneticAlgorithm(
         layers=LAYERS,
-        population_size=2000,
-        num_generations=150,
+        population_size=500,
+        num_generations=100,
         num_repeats_per_agent=1,
         game_fps=0, # Uncapped
         snake_moves_per_second=7
     )
 
-    ga.execute(p_selection=0.05, p_mutation = 0.05, std_mutation=0.1)
+    ga.execute(p_selection=0.1, p_mutation = 0.01, std_mutation=0.1)
 
     data = np.array(ga.generation_stats)
     generations = data[:, 0]
@@ -39,14 +41,22 @@ if __name__ == '__main__':
     best_fitness_avg_of_n = moving_average(best_fitness, n=5)
     mean_ticks_survived_avg_of_n = moving_average(mean_ticks_survived, n=5)
 
-    plt.title('Improvements across generations')
-    plt.scatter(generations, best_fitness, marker='x', label='Fitness of best agent', color='blue')
-    plt.plot(generations, best_fitness_avg_of_n, linestyle='solid', marker='none', label='Moving avg', color='blue')
-    plt.scatter(generations, mean_ticks_survived/np.max(mean_ticks_survived), marker='x', label='Mean number of ticks survived by best agent', color='orange')
-    plt.plot(generations, mean_ticks_survived_avg_of_n, linestyle='solid', marker='none', label='Moving avg', color='orange')
-    plt.xlabel('Generation')
-    plt.ylabel('Normalized values')
-    plt.legend()
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+    fig.suptitle('Improvements across generations')
+
+    ax1.scatter(generations, best_fitness, marker='x', label='Fitness of best agent', color='blue')
+    ax1.plot(generations, best_fitness_avg_of_n, linestyle='solid', marker='none', label='Moving avg', color='blue')
+    ax1.set_ylabel('Normalized fitness')
+    ax1.legend(loc='best')
+    ax1.grid(True)
+
+    ax2.scatter(generations, mean_ticks_survived, marker='x', label='Mean ticks survived', color='orange')
+    ax2.plot(generations, mean_ticks_survived_avg_of_n, linestyle='solid', marker='none', label='Moving avg', color='orange')
+    ax2.set_xlabel('Generation')
+    ax2.set_ylabel('Normalized mean ticks survived')
+    ax2.legend(loc='best')
+    ax2.grid(True)
+
     plt.tight_layout()
     plt.savefig('generation_stats.png')
 
@@ -56,5 +66,5 @@ if __name__ == '__main__':
         agent=None
     )
 
-    game.loadGridRecordsFromJSON('replays/best-agent-replay.json')
+    game.loadGridRecordsFromJSON('replays/most-recent-agent-replay.json')
     game.replay(snake_moves_per_second=7, title='Best snake replay')
