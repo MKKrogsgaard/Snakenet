@@ -243,7 +243,7 @@ class Game():
                     i = len(self.grid_records)
 
             i += 1
-            
+
         time.sleep(3)
 
     def saveGridRecordsToJSON(self, filepath):
@@ -296,12 +296,26 @@ class Game():
         else:
             agent_input = np.array([])
 
-            apple_total_distance, apple_x_distance, apple_y_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
+            nearby_tail_positions = self.snake.lookForTail(self.grid)
 
-            left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
+            agent_input = np.append(agent_input, nearby_tail_positions[0][0])
+            agent_input = np.append(agent_input, nearby_tail_positions[0][1])
+            agent_input = np.append(agent_input, nearby_tail_positions[0][2])
+
+            agent_input = np.append(agent_input, nearby_tail_positions[1][0])
+            # Head is never occupied by a tail piece, so this saves us a neuron
+            agent_input = np.append(agent_input, nearby_tail_positions[1][2])
+
+            agent_input = np.append(agent_input, nearby_tail_positions[2][0])
+            agent_input = np.append(agent_input, nearby_tail_positions[2][1])
+            agent_input = np.append(agent_input, nearby_tail_positions[2][2])
+
+            apple_total_distance, apple_x_distance, apple_y_distance = self.snake.getDistanceToApple(apple=self.apple, normalize=True)
 
             agent_input = np.append(agent_input, apple_x_distance)
             agent_input = np.append(agent_input, apple_y_distance)
+
+            left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance = self.snake.getDistanceToWalls(normalize=True)
 
             agent_input = np.append(agent_input, left_wall_distance)
             agent_input = np.append(agent_input, right_wall_distance)
@@ -366,7 +380,7 @@ class Game():
 
         if self.snake.position == self.apple.position:
             self.agent.previous_distance_to_apple = 10**10
-            self.agent.intermediate_score += 1
+            self.agent.intermediate_score += 10
             self.snake.score += 1
             self.snake.grow()
             self.apple.respawn()

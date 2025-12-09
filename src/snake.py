@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from apple import Apple
+    from game import Grid
 
 class Snake():
     # Constructor
@@ -95,4 +96,49 @@ class Snake():
             return [left_wall_distance/(self.square_size * self.squares_per_side), right_wall_distance/(self.square_size * self.squares_per_side), top_wall_distance/(self.square_size * self.squares_per_side), bottom_wall_distance/(self.square_size * self.squares_per_side)]
 
         return [left_wall_distance, right_wall_distance, top_wall_distance, bottom_wall_distance]
+    
+    def lookForTail(self, grid: 'Grid'):
+        '''
+        Looks for pieces of the tail in a 3x3 grid around the snake's head and returns an array of 8 binary values showing if a space is occupied or not (the center is always occupied by the snake's head, so no need to return a value for that).
 
+        If the snake is near the wall, the out of bounds squares in the grid are counted as occupied. The notation used for the positions in the grid around the head is shown below.
+
+        11  12  13
+        21  HH  23
+        31  32  33   
+        '''
+        head_x, head_y = self.getHeadGridPosition()
+        
+        positions = [[None for i in range(3)] for i in range(3)]
+        positions[1][1] = 0 # The head
+
+        # x is out of bounds left
+        if head_x - 1 < 0:
+            positions[0][0] = 1
+            positions[1][0] = 1
+            positions[2][0] = 1
+        # x is out of bounds right
+        if head_x + 1 >= self.squares_per_side:
+            positions[0][2] = 1
+            positions[1][2] = 1
+            positions[2][2] = 1
+        # y is out of bounds down
+        if head_y - 1 < 0:
+            positions[2][0] = 1
+            positions[2][1] = 1
+            positions[2][2] = 1
+        # y is out of bounds up
+        if head_y + 1 >= self.squares_per_side:
+            positions[0][0] = 1
+            positions[0][1] = 1
+            positions[0][2] = 1
+
+        for i in range(len(positions)):
+            for j in range(len(positions)):
+                if positions[i][j] == None:
+                    if (0 <= head_x - 1 + i < self.squares_per_side) and (0 <= head_y - 1 + j < self.squares_per_side):
+                        positions[i][j] = grid.body_channel[head_x - 1 + i][head_y - 1 + j] # See https://www.baeldung.com/cs/finding-neighbors-of-matrix-element
+                    else:
+                        positions[i][j] = 1
+
+        return positions

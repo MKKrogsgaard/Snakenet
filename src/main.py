@@ -12,9 +12,9 @@ def moving_average(x, n=3):
 
 
 LAYERS = [
-    [2 + 4, 10, identity],
-    [None, 10, ELU],
-    [None, 10, ELU],
+    [8 + 2 + 4, 16, identity],
+    [None, 16, ELU],
+    [None, 16, ELU],
     [None, 4, identity]
 ]
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     ga = GeneticAlgorithm(
         layers=LAYERS,
         population_size=500,
-        num_generations=100,
+        num_generations=500,
         num_repeats_per_agent=1,
         game_fps=0, # Uncapped
         snake_moves_per_second=7
