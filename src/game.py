@@ -9,6 +9,7 @@ from os import environ
 environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 import pygame as pg
+import cv2
 
 import random
 import time
@@ -206,13 +207,13 @@ class Game():
 
         pg.display.update()
 
-    def replay(self, snake_moves_per_second, title='Snake replay'):
+    def replay(self, snake_moves_per_second, title='Snake replay', record_video=False, video_path=None):
         '''
         Replays the game associated with this Game instance, using the grid records.
         
         Replays the game with the fps needed to achieve snake_moves_per_second snake moves per second.
         
-        self.grid_records must be set and must be a list of grid position states.
+        self.grid_records must be set and must be a list of grid position states. If record_video is set to True, a video is recorded and saved at video_path.
         '''
         if self.grid_records == None or len(self.grid_records) == 0:
             print('[!] Game.replay(): self.grid_records must exist!')
@@ -229,22 +230,54 @@ class Game():
 
         self.screen = pg.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
         pg.display.set_caption(title)
-
         self.clock = pg.time.Clock()
-        i = 0
-        while i < len(self.grid_records):
-            self.clock.tick(fps)
 
-            grid_state = self.grid_records[i]
-            self.render(grid_state[0], grid_state[1])
+        if record_video:
+            if video_path != None:
+                # Recording setup
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')   # or 'XVID' and use .avi
+                out = cv2.VideoWriter(video_path, fourcc, snake_moves_per_second, (WINDOW_SIZE, WINDOW_SIZE))
 
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    i = len(self.grid_records)
+                i = 0
+                while i < len(self.grid_records):
+                    self.clock.tick(fps)
 
-            i += 1
+                    grid_state = self.grid_records[i]
+                    self.render(grid_state[0], grid_state[1])
 
-        time.sleep(3)
+                    # Write this frame to the video
+                    frame = pg.surfarray.array3d(self.screen) # (w, h, 3)
+                    frame = np.transpose(frame, (1, 0, 2)) # (h, w, 3)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    out.write(frame)
+
+                    for event in pg.event.get():
+                        if event.type == pg.QUIT:
+                            i = len(self.grid_records)
+
+                    i += 1
+                # Save the video
+                out.release()
+            else:
+                print(f'[!] Game.replay(): record_video = {record_video}, but no video_path provided!')
+                return
+
+        else:
+                i = 0
+                while i < len(self.grid_records):
+                    self.clock.tick(fps)
+
+                    grid_state = self.grid_records[i]
+                    self.render(grid_state[0], grid_state[1])
+
+                    for event in pg.event.get():
+                        if event.type == pg.QUIT:
+                            i = len(self.grid_records)
+
+                    i += 1
+
+        time.sleep(2)
+        pg.quit()
 
     def saveGridRecordsToJSON(self, filepath):
         '''Saves a json representation of self.grid_records to filepath.'''
