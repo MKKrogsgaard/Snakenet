@@ -7,6 +7,8 @@ import os
 import concurrent.futures
 import multiprocessing
 
+import matplotlib.pyplot as plt
+
 from game import Game
 
 def sigmoid(x):
@@ -27,6 +29,12 @@ def tanh(x):
 def identity(x):
     '''Returns x'''
     return x
+
+def moving_average(x, n=3):
+    kernel = np.ones(n) / n
+    res = np.convolve(x, kernel, mode='same')
+    res[-n:] = x[-n:]
+    return res
 
 def calculateFitness(apples_eaten, total_ticks_survived, time_averaged_distance_to_apple, intermediate_score):
     '''Modify this to change how the fitness of an agent is calculated.'''
@@ -332,7 +340,7 @@ class GeneticAlgorithm():
 
         return agents
             
-    def execute(self, p_selection, p_mutation, std_mutation):
+    def execute(self, p_selection, p_mutation, std_mutation, running_plot=False):
         start_time = time.time()
         self.generation_stats = []
 
@@ -366,6 +374,36 @@ class GeneticAlgorithm():
             new_population.extend(offspring)
 
             self.agents = new_population
+            if running_plot and len(self.generation_stats) > 5:
+                data = np.array(self.generation_stats)
+                generations = data[:, 0]
+                best_fitness = data[:, 1]
+                best_fitness = best_fitness/np.max(best_fitness)
+
+                mean_ticks_survived = data[:, 2]
+                mean_ticks_survived = mean_ticks_survived/np.max(mean_ticks_survived)
+
+                best_fitness_avg_of_n = moving_average(best_fitness, n=5)
+                mean_ticks_survived_avg_of_n = moving_average(mean_ticks_survived, n=5)
+
+                fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+                fig.suptitle('Improvements across generations')
+
+                ax1.scatter(generations, best_fitness, marker='x', label='Fitness of best agent', color='blue', alpha=0.5)
+                ax1.plot(generations, best_fitness_avg_of_n, linestyle='solid', marker='none', label='Moving avg', color='black')
+                ax1.set_ylabel('Normalized fitness')
+                ax1.legend(loc='best')
+                ax1.grid(True)
+
+                ax2.scatter(generations, mean_ticks_survived, marker='x', label='Mean ticks survived', color='orange', alpha=0.5)
+                ax2.plot(generations, mean_ticks_survived_avg_of_n, linestyle='solid', marker='none', label='Moving avg', color='black')
+                ax2.set_xlabel('Generation')
+                ax2.set_ylabel('Normalized mean ticks survived')
+                ax2.legend(loc='best')
+                ax2.grid(True)
+
+                plt.tight_layout()
+                plt.savefig('generation_stats.png')
 
             
         end_time = time.time()
