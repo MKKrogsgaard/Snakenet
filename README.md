@@ -24,7 +24,7 @@ The agent recieves the following input from the game:
 - Distance from the head to each of the four walls.
 - Whether positions in a 3x3 grid centered on the head of the snake are occupied by pieces of the tail or not. If the snake is next to a wall, the positions in the 3x3 grid that are out of bounds are counted as occupied.
 
-Since the point in the middle of the 3x3 grid is centered on the head of the snake, it provides no useful information, and is thus omitted. So the agent has a total of 2 + 4 + 8 = 14 input neurons.
+Since the point in the middle of the 3x3 grid is centered on the head of the snake, it provides no useful information and is thus omitted. So the agent has a total of 2 + 4 + 8 = 14 input neurons.
 
 ## Results from experiments
 
